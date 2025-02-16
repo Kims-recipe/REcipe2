@@ -9,4 +9,5 @@ data class IngredientItem(
     val number: Int,
     val expiration: Date? = null,
     val imageUrl: String? = null
+//    val updateDate: Date
 )
