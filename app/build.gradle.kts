@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.kims.recipe2"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.kims.recipe2"
@@ -34,7 +34,12 @@ android {
     kotlinOptions {
         jvmTarget = "1.8"
     }
+    buildFeatures {
+        viewBinding = true
+    }
 }
+
+
 
 dependencies {
 
@@ -49,4 +54,8 @@ dependencies {
 
     implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
     implementation("com.google.firebase:firebase-analytics")
+
+    implementation(libs.navigation.fragment.ktx)
+    implementation(libs.navigation.ui.ktx)
+
 }
