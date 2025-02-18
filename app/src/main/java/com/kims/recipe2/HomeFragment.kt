@@ -1,14 +1,20 @@
 package com.kims.recipe2
 
+import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Rect
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.DatePicker
+import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.textfield.TextInputEditText
 import com.kims.recipe2.databinding.FragmentHomeBinding
+import java.util.*
 
 class HomeFragment : Fragment() {
 
@@ -18,7 +24,10 @@ class HomeFragment : Fragment() {
     private lateinit var ingredientAdapter: IngredientAdapter
     private var currentStorageType = StorageType.REFRIGERATOR
 
-    // 임시 데이터 (나중에 데이터베이스로 교체)
+    // Firestore 매니저
+    private val firestoreManager = FirestoreManager()
+
+    // 재료 목록을 저장
     private val ingredientsByStorage = mutableMapOf<StorageType, MutableList<IngredientItem>>()
 
     override fun onCreateView(
@@ -33,36 +42,42 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        initializeDummyData() // 임시 데이터 초기화
         setupRecyclerView()
         setupStorageNavigation()
         setupAddButton()
-        updateIngredientList() // 초기 데이터 표시
+        loadIngredientsFromFirestore() // Firestore에서 데이터 로드
     }
 
-    private fun initializeDummyData() {
-        // 임시 데이터 초기화 (나중에 데이터베이스로 교체)
+    private fun loadIngredientsFromFirestore() {
+        // 초기화
         StorageType.values().forEach { storageType ->
             ingredientsByStorage[storageType] = mutableListOf()
         }
 
-        // 샘플 데이터
-        ingredientsByStorage[StorageType.REFRIGERATOR]?.addAll(
-            listOf(
-//                IngredientItem("1", "우유", StorageType.REFRIGERATOR, 1, 2025, "5"),
-//                IngredientItem("2", "계란", StorageType.REFRIGERATOR)
-            )
+        // Firestore에서 모든 재료 가져오기
+        firestoreManager.getAllIngredients(
+            onSuccess = { ingredients ->
+                // 모든 재료를 저장 위치별로 분류
+                ingredients.forEach { ingredient ->
+                    ingredientsByStorage[ingredient.storageType]?.add(ingredient)
+                }
+                updateIngredientList() // UI 업데이트
+            },
+            onFailure = { exception ->
+                Toast.makeText(context, "데이터 로드 실패: ${exception.message}", Toast.LENGTH_SHORT).show()
+            }
         )
-        ingredientsByStorage[StorageType.FREEZER]?.addAll(
-            listOf(
 
-            )
-        )
-        ingredientsByStorage[StorageType.PANTRY]?.addAll(
-            listOf(
-
-            )
-        )
+        // 실시간 업데이트 감지 설정
+        firestoreManager.observeIngredients { ingredients ->
+            // 저장소별로 재료 분류
+            StorageType.values().forEach { storageType ->
+                ingredientsByStorage[storageType] = ingredients
+                    .filter { it.storageType == storageType }
+                    .toMutableList()
+            }
+            updateIngredientList() // UI 업데이트
+        }
     }
 
     private fun setupRecyclerView() {
@@ -125,25 +140,79 @@ class HomeFragment : Fragment() {
 
     private fun setupAddButton() {
         binding.fabAddIngredient.setOnClickListener {
-            addNewIngredient()
+            // 새 액티비티로 이동
+            val intent = Intent(requireContext(), AddIngredientActivity::class.java)
+            intent.putExtra("storageType", currentStorageType)
+            startActivity(intent)
         }
     }
 
-    private fun addNewIngredient() {
-        // 임시로 재료 추가 (나중에 다이얼로그나 새 화면으로 대체)
-        val newId = System.currentTimeMillis().toString()
-        val newIngredient = IngredientItem(
-            id = newId,
-            name = "새로운 재료 $newId",
-            storageType = currentStorageType,
-            number = 10,
-            expiration = null,
-            imageUrl=""
-        )
+    // 처음에 다이얼로그로만 할까 하다가 사진도 넣어야하고 음성인식도 해야해서 엑티비티로 바꾸고 일단 지움
+//    private fun setupAddButton() {
+//        binding.fabAddIngredient.setOnClickListener {
+//            showAddIngredientDialog()
+//        }
+//    }
+//
+//
+//
+//    private fun showAddIngredientDialog() {
+//        val dialogView = layoutInflater.inflate(R.layout.add_ingredient_dialog, null)
+//        val etName = dialogView.findViewById<TextInputEditText>(R.id.etIngredientName)
+//        val etAmount = dialogView.findViewById<TextInputEditText>(R.id.etIngredientAmount)
+//        val datePicker = dialogView.findViewById<DatePicker>(R.id.dpExpiration)
+//
+//        val dialog = AlertDialog.Builder(requireContext())
+//            .setView(dialogView)
+//            .setPositiveButton("추가") { _, _ ->
+//                val ingredientName = etName.text.toString()
+//
+//                if (ingredientName.isBlank()) {
+//                    Toast.makeText(context, "재료 이름을 입력해주세요", Toast.LENGTH_SHORT).show()
+//                    return@setPositiveButton
+//                }
+//
+//                val amount = etAmount.text.toString().toIntOrNull() ?: 0
+//
+//                // 유통기한 날짜 설정
+//                val calendar = Calendar.getInstance()
+//                calendar.set(datePicker.year, datePicker.month, datePicker.dayOfMonth)
+//                val expirationDate = calendar.time
+//
+//                // 새 재료 객체 생성
+//                val newIngredient = IngredientItem(
+//                    id = UUID.randomUUID().toString(),
+//                    name = ingredientName,
+//                    storageType = currentStorageType,
+//                    number = amount,
+//                    expiration = expirationDate,
+//                    imageUrl = null  // 이미지는 나중에 추가 가능
+//                )
+//
+//                // Firestore에 저장
+//                saveIngredientToFirestore(newIngredient)
+//            }
+//            .setNegativeButton("취소", null)
+//            .create()
+//
+//        dialog.show()
+//    }
 
-        ingredientsByStorage[currentStorageType]?.add(newIngredient)
-        updateIngredientList()
-    }
+//    private fun saveIngredientToFirestore(ingredient: IngredientItem) {
+//        firestoreManager.saveIngredient(
+//            ingredient = ingredient,
+//            onSuccess = {
+//                Toast.makeText(context, "${ingredient.name} 추가 완료", Toast.LENGTH_SHORT).show()
+//
+//                // 로컬 목록에도 추가 (실시간 리스너로 업데이트가 되지만, 즉각적인 UI 반응을 위해)
+//                ingredientsByStorage[ingredient.storageType]?.add(ingredient)
+//                updateIngredientList()
+//            },
+//            onFailure = { exception ->
+//                Toast.makeText(context, "추가 실패: ${exception.message}", Toast.LENGTH_SHORT).show()
+//            }
+//        )
+//    }
 
     override fun onDestroyView() {
         super.onDestroyView()
