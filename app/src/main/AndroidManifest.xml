@@ -2,7 +2,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- ────── 1) 권한 ────── -->
+    <!-- FCM 알림(안드로이드 13+) -->
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 인터넷 통신(Firebase SDK 전부) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
     <application
+        android:name=".RecipeApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,6 +25,17 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Recipe2"
         tools:targetApi="31">
+
+        <!-- ── 3) Firebase Cloud Messaging 서비스 등록 ── -->
+        <service
+        android:name=".MyMessagingService"
+        android:exported="false">
+        <intent-filter>
+            <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+        </intent-filter>
+        </service>
+
+
         <activity
             android:name=".MyPageActivity"
             android:exported="false" />

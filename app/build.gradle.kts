@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.application)
+    id("com.android.application")
     alias(libs.plugins.kotlin.android)
     id("com.google.gms.google-services")
 }
@@ -47,6 +47,15 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
-    implementation(platform("com.google.firebase:firebase-bom:33.9.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.2.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
+
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.mlkit:image-labeling-custom")              // ML Kit 분류
+    implementation("com.google.android.gms:play-services-mlkit-object-detection") // ODT
+    implementation("com.google.mlkit:modeldownloader")                    // 커스텀 모델
+
     implementation("com.google.firebase:firebase-analytics")
 }
