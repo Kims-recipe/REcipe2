@@ -4,7 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import kotlin.text.Typography.dagger
+import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
 class RecipeApp : Application() {
@@ -20,5 +20,3 @@ class RecipeApp : Application() {
         }
     }
 }
-
-annotation class HiltAndroidApp
