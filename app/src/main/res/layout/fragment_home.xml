@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nestedScrollView"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- ▣ 식단 포트폴리오 -->
+        <TextView
+            android:id="@+id/tvMealPortfolioTitle"
+            style="@style/TextAppearance.MaterialComponents.Headline6"
+            android:text="식단 포트폴리오" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvMeals"
+            android:layout_width="match_parent"
+            android:layout_height="180dp"
+            android:layout_marginTop="8dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnRecommendMenu"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="메뉴 추천받기"
+            style="?attr/materialButtonOutlinedStyle" />
+
+        <!-- ▣ 주간 영양 -->
+        <TextView
+            android:id="@+id/tvWeeklyTitle"
+            style="@style/TextAppearance.MaterialComponents.Headline6"
+            android:layout_marginTop="24dp"
+            android:text="주간 영양" />
+
+        <LinearLayout
+            android:id="@+id/statContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal"
+            android:weightSum="2">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        style="@style/TextAppearance.MaterialComponents.Body2"
+                        android:text="Calories Consumed" />
+
+                    <TextView
+                        android:id="@+id/tvCalories"
+                        style="@style/TextAppearance.MaterialComponents.Headline4"
+                        android:text="3500 cal" />
+
+                    <TextView
+                        android:id="@+id/tvCaloriesDiff"
+                        style="@style/TextAppearance.MaterialComponents.Caption"
+                        android:text="+15%" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        style="@style/TextAppearance.MaterialComponents.Body2"
+                        android:text="Steps Taken" />
+
+                    <TextView
+                        android:id="@+id/tvSteps"
+                        style="@style/TextAppearance.MaterialComponents.Headline4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="5000 steps" />
+
+                    <TextView
+                        android:id="@+id/tvStepsDiff"
+                        style="@style/TextAppearance.MaterialComponents.Caption"
+                        android:text="-10%" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- ▣ 제철 음식 -->
+        <TextView
+            android:id="@+id/tvSeasonalTitle"
+            style="@style/TextAppearance.MaterialComponents.Headline6"
+            android:layout_marginTop="24dp"
+            android:text="제철 음식" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvSeasonalFoods"
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_marginTop="8dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

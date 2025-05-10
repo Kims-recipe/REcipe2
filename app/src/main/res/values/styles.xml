@@ -1,0 +1,35 @@
+<!-- res/values/styles.xml -->
+<resources>
+
+    <!-- ========= Typography ========= -->
+    <style name="Text.SubHeader" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:paddingBottom">8dp</item>
+    </style>
+
+    <style name="Text.LabelSmall" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="Text.ValueLarge" parent="TextAppearance.MaterialComponents.Headline6">
+        <item name="android:textSize">18sp</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- ========= Cards ========= -->
+    <style name="Card.AnalysisChip" parent="Widget.MaterialComponents.CardView">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">80dp</item>
+        <item name="cardCornerRadius">12dp</item>
+        <item name="android:layout_weight">1</item>
+    </style>
+
+    <style name="Card.CalorieBox" parent="Widget.MaterialComponents.CardView">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">80dp</item>
+        <item name="cardCornerRadius">12dp</item>
+        <item name="android:layout_weight">1</item>
+    </style>
+
+</resources>

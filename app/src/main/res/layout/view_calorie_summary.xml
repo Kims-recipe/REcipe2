@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- res/layout/view_calorie_summary.xml -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <!-- 일간 -->
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Card.CalorieBox">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView 
+                style="@style/Text.LabelSmall" 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="일간"/>
+            <TextView
+                android:id="@+id/tvDaily"
+                style="@style/Text.ValueLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 kcal"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 주간 -->
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Card.CalorieBox"
+        android:layout_marginStart="8dp">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView 
+                style="@style/Text.LabelSmall" 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="주간"/>
+            <TextView
+                android:id="@+id/tvWeekly"
+                style="@style/Text.ValueLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 kcal"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- 월간 (옵션) -->
+    <com.google.android.material.card.MaterialCardView
+        style="@style/Card.CalorieBox"
+        android:layout_marginStart="8dp">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <TextView 
+                style="@style/Text.LabelSmall" 
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="월간"/>
+            <TextView
+                android:id="@+id/tvMonthly"
+                style="@style/Text.ValueLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0 kcal"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</LinearLayout>
