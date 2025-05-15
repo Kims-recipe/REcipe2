@@ -74,7 +74,9 @@ dependencies {
     /* UI & Utils */
     implementation("com.google.android.material:material:1.11.0")
     implementation("io.coil-kt:coil:2.5.0")        // 이미지 로드
-    implementation("com.github.bumptech.glide:glide:4.16.0")       // (Coil가 안 맞을 때 선택)
+    implementation ("com.github.dhaval2404:imagepicker:2.1")
+
+    implementation("com.github.bumptech.glide:glide:4.16.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
     /* KotlinX */

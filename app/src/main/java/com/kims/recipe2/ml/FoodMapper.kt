@@ -1,0 +1,60 @@
+package com.kims.recipe2.ml
+
+object FoodMapper {
+    private val map = mapOf(
+        "Pizza" to "F0001",
+        "Kimchi" to "F0002",
+        "Bibimbap" to "F0003",
+        "Ramen" to "F0004",
+        "Fried Chicken" to "F0005",
+        "Hamburger" to "F0006",
+        "Sandwich" to "F0007",
+        "Salad" to "F0008",
+        "Sushi" to "F0009",
+        "Tteokbokki" to "F0010",
+        "Spaghetti" to "F0011",
+        "Steak" to "F0012",
+        "Pork Cutlet" to "F0013",
+        "Hot Dog" to "F0014",
+        "Kimbap" to "F0015",
+        "Udon" to "F0016",
+        "Curry" to "F0017",
+        "Dumplings" to "F0018",
+        "Pancake" to "F0019",
+        "Toast" to "F0020",
+        "Ice Cream" to "F0021",
+        "Cake" to "F0022",
+        "Donut" to "F0023",
+        "Chocolate" to "F0024",
+        "Cookie" to "F0025",
+        "Bread" to "F0026",
+        "Rice" to "F0027",
+        "Noodles" to "F0028",
+        "Soup" to "F0029",
+        "Cereal" to "F0030",
+        "Yogurt" to "F0031",
+        "Cheese" to "F0032",
+        "Milk" to "F0033",
+        "Coffee" to "F0034",
+        "Tea" to "F0035",
+        "Juice" to "F0036",
+        "Soda" to "F0037",
+        "Beer" to "F0038",
+        "Wine" to "F0039",
+        "Whiskey" to "F0040",
+        "Soju" to "F0041",
+        "Makgeolli" to "F0042",
+        "Water" to "F0043",
+        "Egg" to "F0044",
+        "Bacon" to "F0045",
+        "Sausage" to "F0046",
+        "Shrimp" to "F0047",
+        "Crab" to "F0048",
+        "Lobster" to "F0049",
+        "Fish" to "F0050"
+    )
+
+    fun getCode(label: String): String? {
+        return map[label]
+    }
+}

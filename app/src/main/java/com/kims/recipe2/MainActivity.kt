@@ -2,11 +2,13 @@ package com.kims.recipe2
 
 import com.google.gson.Gson
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.widget.Button
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -15,6 +17,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.kims.recipe2.ml.FoodDetector
+import com.kims.recipe2.ui.food.FoodDetectActivity
 import com.kims.recipe2.util.uploadPhoto
 import kotlinx.coroutines.launch
 import java.io.File
@@ -25,6 +28,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+
+        val btn = findViewById<Button>(R.id.startFoodDetectBtn)
+        btn.setOnClickListener {
+            val intent = Intent(this, FoodDetectActivity::class.java)
+            startActivity(intent)
+        }
 
         // 인셋 처리 (기존 코드 유지)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->

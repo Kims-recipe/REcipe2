@@ -8,14 +8,19 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
+import coil.Coil
 import com.google.common.reflect.TypeToken
+import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.functions.ktx.functions
 import com.google.firebase.ktx.Firebase
+import com.google.gson.Gson
 import com.kims.recipe2.databinding.FragmentMealEditBinding
 import com.kims.recipe2.ml.DetectedFood
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+
 
 class MealEditFragment : Fragment(R.layout.fragment_meal_edit) {
 
@@ -30,9 +35,9 @@ class MealEditFragment : Fragment(R.layout.fragment_meal_edit) {
 
     override fun onViewCreated(v: View, s: Bundle?) {
         val binding = FragmentMealEditBinding.bind(v)
-        Coil.load(binding.imgMeal.context, photoUrl) {
-            target(binding.imgMeal)
-        }
+
+        binding.imgMeal.load(photoUrl)
+
         adapter = FoodEditAdapter(items)
         binding.rvItems.adapter = adapter
         binding.btnSave.setOnClickListener { saveMeal() }
@@ -41,13 +46,14 @@ class MealEditFragment : Fragment(R.layout.fragment_meal_edit) {
     private fun saveMeal() {
         val user = Firebase.auth.currentUser ?: return
         lifecycleScope.launch {
-            // 1. 영양 계산 Cloud Function 호출
+            // ② Functions 호출 & await
             val nutrient = Firebase.functions
                 .getHttpsCallable("getNutrients")
                 .call(mapOf("items" to adapter.toItemMap()))
-                .await<HashMap<String, Double>>()
+                .await()                       // HttpsCallableResult
+                .data as HashMap<String, Double>
 
-            // 2. Firestore 저장
+            // ③ Firestore 저장
             val mealRef = Firebase.firestore.collection("meals").add(
                 mapOf(
                     "uid" to user.uid,
@@ -56,9 +62,9 @@ class MealEditFragment : Fragment(R.layout.fragment_meal_edit) {
                     "totalKcal" to nutrient["kcal"]
                 )
             ).await()
-            adapter.toItemMap().forEach {
-                mealRef.collection("items").add(it).await()
-            }
+
+            adapter.toItemMap().forEach { mealRef.collection("items").add(it).await() }
+
             Toast.makeText(requireContext(), "저장 완료!", Toast.LENGTH_SHORT).show()
             requireActivity().supportFragmentManager.popBackStack()
         }
