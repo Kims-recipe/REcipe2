@@ -1,0 +1,27 @@
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/mobile_navigation"
+    app:startDestination="@id/navigation_home">
+
+    <fragment
+        android:id="@+id/navigation_home"
+        android:name="com.kims.recipe2.ui.home.HomeFragment"
+        android:label="홈"
+        tools:layout="@layout/fragment_home" />
+    <fragment
+        android:id="@+id/navigation_fridge"
+        android:name="com.kims.recipe2.ui.fridge.FridgeFragment"
+        android:label="냉장고"
+        tools:layout="@layout/fragment_fridge" />
+    <fragment
+        android:id="@+id/navigation_calendar"
+        android:name="com.kims.recipe2.ui.calendar.CalendarFragment"
+        android:label="식단"
+        tools:layout="@layout/fragment_calendar" />
+    <fragment
+        android:id="@+id/navigation_mypage"
+        android:name="com.kims.recipe2.ui.mypage.MyPageFragment"
+        android:label="마이페이지"
+        tools:layout="@layout/fragment_mypage" />
+</navigation>

@@ -1,0 +1,46 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="10dp"
+    android:background="@drawable/item_background"
+    android:layout_marginBottom="8dp">
+
+    <TextView
+        android:id="@+id/tv_icon"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:text="🔥"
+        android:gravity="center"
+        android:textSize="18sp"
+        android:background="@drawable/icon_background"/>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:layout_marginStart="12dp">
+        <TextView
+            android:id="@+id/tv_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="칼로리"
+            android:textStyle="bold"/>
+        <TextView
+            android:id="@+id/tv_amount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="1650 / 2000 kcal"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/progress_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="80dp"
+        android:layout_height="6dp"
+        android:progress="82"
+        android:progressDrawable="@drawable/custom_progress_bar"/>
+</LinearLayout>

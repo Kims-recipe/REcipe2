@@ -10,17 +10,17 @@
 
     <fragment
         android:id="@+id/mealFragment"
-        android:name="com.kims.recipe2.MealFragment"
+        android:name="com.kims.recipe2.ui.calendar.CalendarFragment"
         android:label="식단 관리" />
 
     <fragment
         android:id="@+id/analysisFragment"
-        android:name="com.kims.recipe2.AnalysisFragment"
+        android:name="com.kims.recipe2.ui.fridge.FridgeFragment"
         android:label="분석" />
 
     <fragment
         android:id="@+id/profileFragment"
-        android:name="com.kims.recipe2.ProfileFragment"
+        android:name="com.kims.recipe2.ui.mypage.MyPageFragment"
         android:label="내 정보" />
 
 </navigation>
