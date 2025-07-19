@@ -9,6 +9,9 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kims.recipe2.databinding.FragmentMypageBinding
 import com.kims.recipe2.ui.home.NutritionAdapter
+import com.kims.recipe2.ui.auth.LoginActivity // import 추가
+import android.content.Intent // import 추가
+import com.google.firebase.auth.FirebaseAuth
 
 class MyPageFragment : Fragment() {
 
@@ -42,6 +45,18 @@ class MyPageFragment : Fragment() {
 
         // 4. 가져온 데이터를 어댑터에 전달하여 화면에 표시합니다.
         progressAdapter.submitList(weeklyProgressList)
+        // 로그아웃 버튼 클릭 리스너 설정
+        binding.btnLogout.setOnClickListener {
+            // 1. Firebase에서 로그아웃 처리
+            FirebaseAuth.getInstance().signOut()
+
+            // 2. 로그인 화면으로 이동
+            val intent = Intent(requireActivity(), LoginActivity::class.java).apply {
+                // 뒤로가기 시 메인 화면으로 돌아오지 않도록 스택을 비웁니다.
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            }
+            startActivity(intent)
+        }
     }
 
     override fun onDestroyView() {

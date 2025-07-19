@@ -37,29 +37,23 @@
 
 
         <activity
-            android:name=".MyPageActivity"
+            android:name=".ui.auth.LoginActivity"
             android:exported="false" />
         <activity
-            android:name=".DietActivity"
-            android:exported="false" />
-        <activity
-            android:name=".RecipeActivity"
-            android:exported="false" />
-        <activity
-            android:name=".InventoryActivity"
-            android:exported="false" />
-        <activity
-            android:name=".LoginActivity"
-            android:exported="false" />
+            android:name=".SplashActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Recipe2"> <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+        </activity>
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:exported="false" />
+        <activity
+            android:name=".ui.auth.SignUpActivity"
+            android:exported="false" />
+        <activity android:name=".ui.fridge.IngredientListActivity" />
     </application>
 
 </manifest>
