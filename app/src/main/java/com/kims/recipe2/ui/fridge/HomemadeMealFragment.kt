@@ -18,10 +18,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
 import com.kims.recipe2.databinding.FragmentHomemadeMealBinding
-import com.kims.recipe2.model.FridgeCategory
 import com.kims.recipe2.model.Ingredient
 
 class HomemadeMealFragment : Fragment() {
@@ -30,7 +27,10 @@ class HomemadeMealFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val fridgeViewModel: FridgeViewModel by viewModels()
+    private lateinit var mealViewModel: MealViewModel
+
     private val selectedIngredients = mutableListOf<Ingredient>()
+    private lateinit var allIngredientAdapter: IngredientAdapter
 
     private lateinit var categoryAdapter: FridgeCategoryAdapter
     private lateinit var selectedIngredientAdapter: IngredientAdapter
@@ -43,6 +43,15 @@ class HomemadeMealFragment : Fragment() {
             selectedImageUri = result.data?.data
             binding.ivMealPreview.setImageURI(selectedImageUri)
         }
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // ViewModel 인스턴스 초기화. ViewModelProvider.Factory를 사용해야 안전합니다.
+        // Hilt/Koin 사용 시 @Inject 어노테이션 등으로 자동 주입됩니다.
+        // 임시 방편으로, fridgeViewModel이 이미 주입되었다고 가정하고 생성자에 넘겨줍니다.
+        // 실제 프로젝트에서는 ViewModelProvider.Factory 또는 DI 라이브러리를 사용하세요.
+        mealViewModel = MealViewModel(fridgeViewModel)
     }
 
     override fun onCreateView(
@@ -78,6 +87,11 @@ class HomemadeMealFragment : Fragment() {
 
         fridgeViewModel.categories.observe(viewLifecycleOwner) {
             categoryAdapter.submitList(it)
+        }
+
+        fridgeViewModel.ingredients.observe(viewLifecycleOwner) {
+            // 이 Observer는 재료 데이터가 변경될 때마다 호출되므로,
+            // showIngredientSelectionDialog에서 사용할 재료 목록도 최신 상태를 유지하게 됩니다.
         }
 
         binding.btnSaveMeal.setOnClickListener {
@@ -155,38 +169,27 @@ class HomemadeMealFragment : Fragment() {
     }
 
     private fun saveMealRecord() {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val mealName = binding.etMealName.text.toString()
-        val mealRecord = hashMapOf(
-            "mealType" to "집밥",
-            "mealTime" to selectedMealTime,
-            "mealName" to mealName,
-            "timestamp" to System.currentTimeMillis(),
-            "ingredients" to selectedIngredients.map {
-                mapOf(
-                    "name" to it.name,
-                    "category" to it.category,
-                    "quantity" to it.quantity,
-                    "unit" to it.unit
-                )
-            },
-            "imageUri" to selectedImageUri?.toString().orEmpty()
-        )
 
-        FirebaseFirestore.getInstance()
-            .collection("users").document(uid)
-            .collection("mealRecords")
-            .add(mealRecord)
-            .addOnSuccessListener {
-                Toast.makeText(requireContext(), "식사 기록 완료!", Toast.LENGTH_SHORT).show()
+        if (mealName.isEmpty() || selectedIngredients.isEmpty()) {
+            Toast.makeText(requireContext(), "식사 이름과 재료를 입력하세요", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        mealViewModel.saveMealRecord(
+            mealName = mealName,
+            mealType = selectedMealTime,
+            selectedIngredients = selectedIngredients.toList(), // mutableList를 toList()로 넘겨 불변성 유지
+            imageUri = selectedImageUri?.toString(),
+            onSuccess = {
+                Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
                 selectedIngredients.clear()
                 selectedIngredientAdapter.submitList(emptyList())
-                binding.etMealName.setText("")
-                binding.ivMealPreview.setImageResource(android.R.color.transparent)
+            },
+            onFailure = { e ->
+                Toast.makeText(requireContext(), "❌ 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()
             }
-            .addOnFailureListener {
-                Toast.makeText(requireContext(), "기록 실패", Toast.LENGTH_SHORT).show()
-            }
+        )
     }
 
     override fun onDestroyView() {

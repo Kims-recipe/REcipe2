@@ -19,17 +19,29 @@ class IngredientListViewModel : ViewModel() {
     val ingredients: LiveData<List<Ingredient>> = _ingredients
 
     fun fetchFilteredIngredients(filterType: String, filterValue: String) {
-        if (userId == null) return
+        if (userId == null) {
+            Log.e("IngredientListViewModel", "User ID is null. Cannot fetch ingredients.")
+            return
+        }
 
         db.collection("users").document(userId).collection("ingredients")
-            .whereEqualTo(filterType, filterValue) // 조건에 맞는 데이터만 필터링
-            .addSnapshotListener { snapshot, _ ->
-                snapshot?.let {
-                    _ingredients.value = it.toObjects<Ingredient>().map { ingredient ->
-                        ingredient.id = it.documents[it.toObjects<Ingredient>().indexOf(ingredient)].id
-                        ingredient
-                    }
+            .whereEqualTo(filterType, filterValue)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.w("IngredientListViewModel", "Listen failed.", error)
+                    return@addSnapshotListener
                 }
+
+                snapshot?.let { querySnapshot ->
+                    val ingredientListWithIds = querySnapshot.documents.mapNotNull { document ->
+                        // 각 문서의 ID를 Ingredient 객체에 직접 할당
+                        document.toObject(Ingredient::class.java)?.apply {
+                            id = document.id // << Firestore 문서 ID를 Ingredient 객체의 id 필드에 할당
+                        }
+                    }
+                    _ingredients.value = ingredientListWithIds
+                    Log.d("IngredientListViewModel", "Fetched ${ingredientListWithIds.size} ingredients with IDs.")
+                } ?: Log.d("IngredientListViewModel", "Snapshot is null.")
             }
     }
 
@@ -41,7 +53,7 @@ class IngredientListViewModel : ViewModel() {
         // ----------------------------
 
         if (userId == null) {
-            Log.e("FridgeViewModel", "User ID가 null입니다. 로그인 상태를 확인하세요.")
+            Log.e("IngredientListViewModel", "User ID가 null입니다. 로그인 상태를 확인하세요.")
             return
         }
 

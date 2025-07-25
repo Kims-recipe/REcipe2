@@ -5,6 +5,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObjects
 import com.kims.recipe2.model.FridgeCategory
@@ -42,9 +43,11 @@ class FridgeViewModel : ViewModel() {
 
     // 3. Firestore에서 재료 목록을 실시간으로 가져오는 함수
     private fun fetchIngredients() {
-        if (userId == null) return
+        if (userId == null) {
+            Log.e("FridgeViewModel", "User ID is null. Cannot fetch ingredients.")
+            return
+        }
 
-        // addSnapshotListener는 데이터가 변경될 때마다 자동으로 호출되어 UI를 실시간으로 업데이트합니다.
         db.collection("users").document(userId).collection("ingredients")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -52,13 +55,52 @@ class FridgeViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
                 if (snapshot != null) {
-                    val ingredientList = snapshot.toObjects<Ingredient>()
-                    _ingredients.value = ingredientList
+                    // 각 문서의 ID를 Ingredient 객체에 직접 할당하는 부분이 핵심입니다.
+                    val ingredientListWithIds = snapshot.documents.mapNotNull { document ->
+                        document.toObject(Ingredient::class.java)?.apply {
+                            id = document.id // << 이 한 줄이 핵심
+                        }
+                    }
+                    _ingredients.value = ingredientListWithIds
+                    Log.d("FridgeViewModel", "Fetched ${ingredientListWithIds.size} ingredients with IDs.")
+                } else {
+                    Log.d("FridgeViewModel", "Snapshot is null.")
                 }
             }
     }
 
-    // 4. 새로운 재료를 Firestore에 추가하는 함수
+    fun consumeIngredient(ingredient: Ingredient, consumedQuantity: Int) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("FridgeViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 소비할 수 없습니다.")
+            return
+        }
+
+        val ingredientRef = db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+
+        ingredientRef.get()
+            .addOnSuccessListener { documentSnapshot ->
+                if (documentSnapshot.exists()) {
+                    val currentQuantity = documentSnapshot.getLong("quantity") ?: 0L
+                    val expectedNewQuantity = currentQuantity - consumedQuantity
+
+                    if (expectedNewQuantity <= 0) {
+                        ingredientRef.delete()
+                            .addOnSuccessListener { Log.d("FridgeViewModel", "✅ 재료 삭제 성공: ${ingredient.name}") }
+                            .addOnFailureListener { e -> Log.e("FridgeViewModel", "❌ 재료 삭제 실패: ${ingredient.name}", e) }
+                    } else {
+                        ingredientRef.update("quantity", FieldValue.increment(-consumedQuantity.toLong()))
+                            .addOnSuccessListener { Log.d("FridgeViewModel", "✅ 재료 수량 차감 성공: ${ingredient.name}, 새 수량: $expectedNewQuantity") }
+                            .addOnFailureListener { e -> Log.e("FridgeViewModel", "❌ 재료 수량 차감 실패: ${ingredient.name}", e) }
+                    }
+                } else {
+                    Log.e("FridgeViewModel", "Firestore에 재료 문서가 존재하지 않습니다: ${ingredient.name}")
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("FridgeViewModel", "재료 문서 가져오기 실패: ${ingredient.name}", e)
+            }
+    }
+
     // 4. 새로운 재료를 Firestore에 추가하는 함수
 //    fun addIngredient(ingredient: Ingredient) { // Ingredient 객체를 통째로 받도록 수정
 //        // --- 디버깅을 위한 로그 추가 ---
