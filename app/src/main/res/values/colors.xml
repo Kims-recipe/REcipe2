@@ -2,4 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="carb_color">#45b7d1</color>
+    <color name="protein_color">#4ecdc4</color>
+    <color name="fat_color">#f9ca24</color>
 </resources>
