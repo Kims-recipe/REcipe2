@@ -8,18 +8,28 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kims.recipe2.model.Ingredient
 import com.kims.recipe2.databinding.ItemIngredientBinding
 
-class IngredientAdapter : ListAdapter<Ingredient, IngredientAdapter.IngredientViewHolder>(DiffCallback) {
+class IngredientAdapter(
+    private val onItemClick: ((Ingredient) -> Unit)? = null
+) : ListAdapter<Ingredient, IngredientAdapter.IngredientViewHolder>(DiffCallback) {
 
-    class IngredientViewHolder(private val binding: ItemIngredientBinding) : RecyclerView.ViewHolder(binding.root) {
+    class IngredientViewHolder(
+        private val binding: ItemIngredientBinding,
+        private val onItemClick: ((Ingredient) -> Unit)?
+    ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(ingredient: Ingredient) {
             binding.tvIngredientName.text = ingredient.name
             binding.tvIngredientCategory.text = ingredient.category
+            binding.tvIngredientQuantity.text = "${ingredient.quantity}${ingredient.unit}"
+
+            binding.root.setOnClickListener {
+                onItemClick?.invoke(ingredient)
+            }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): IngredientViewHolder {
         val binding = ItemIngredientBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return IngredientViewHolder(binding)
+        return IngredientViewHolder(binding, onItemClick)
     }
 
     override fun onBindViewHolder(holder: IngredientViewHolder, position: Int) {

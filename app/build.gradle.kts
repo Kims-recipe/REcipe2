@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.kims.recipe2"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.kims.recipe2"

@@ -36,6 +36,7 @@
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <!-- 입력 필드 카드 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -54,14 +55,43 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="10dp"
-                    android:text="📝 레시피 불러오기"
-                    android:textSize="18sp"
+                    android:text="식사 이름"
+                    android:textSize="14sp"
                     android:textStyle="bold" />
 
+                <EditText
+                    android:id="@+id/et_meal_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="예: 계란 프라이"
+                    android:inputType="text" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="식사 시간"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <Spinner
+                    android:id="@+id/spinner_meal_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+
+                <ImageView
+                    android:id="@+id/iv_meal_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="200dp"
+                    android:layout_marginTop="12dp"
+                    android:scaleType="centerCrop"
+                    android:background="#DDDDDD"
+                    android:contentDescription="식사 이미지" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 재료 선택 카드 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -96,6 +126,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
+        <!-- 선택된 재료 카드 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -124,8 +155,18 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="10dp"
                     tools:itemCount="3"
-                    tools:listitem="@layout/item_selected_ingredient"/>
+                    tools:listitem="@layout/item_ingredient" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <Button
+            android:id="@+id/btn_save_meal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:text="식사로 기록하기"
+            android:textColor="@android:color/white"
+            android:textStyle="bold" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>
