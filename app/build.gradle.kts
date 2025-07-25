@@ -92,6 +92,8 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("com.kizitonwose.calendar:view:2.0.3")
 
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
 
 
 }
