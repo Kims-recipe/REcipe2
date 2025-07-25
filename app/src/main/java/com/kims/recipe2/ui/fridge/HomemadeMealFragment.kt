@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kims.recipe2.databinding.FragmentHomemadeMealBinding
 import com.kims.recipe2.model.Ingredient
@@ -123,16 +124,42 @@ class HomemadeMealFragment : Fragment() {
         }
     }
 
+    // 재료 선택 다이얼로그를 커스텀 RecyclerView로 변경
     private fun showIngredientSelectionDialog(ingredients: List<Ingredient>) {
-        val ingredientNames = ingredients.map { it.name }.toTypedArray()
+        val dialogView = LayoutInflater.from(requireContext()).inflate(com.kims.recipe2.R.layout.dialog_ingredient_selection, null) // 새로운 레이아웃 파일 사용
+        val recyclerView = dialogView.findViewById<RecyclerView>(com.kims.recipe2.R.id.rv_dialog_ingredients)
 
+        // 다이얼로그에서 사용할 SelectableIngredientAdapter 인스턴스 생성
+        val dialogSelectableAdapter = SelectableIngredientAdapter { selectedList ->
+            // 이 콜백은 다이얼로그 내에서 재료 선택이 변경될 때마다 호출됩니다.
+            // 여기서는 아직 최종 선택이 아니므로 아무것도 하지 않습니다.
+            // 최종 선택은 "선택" 버튼을 눌렀을 때 처리합니다.
+        }
+
+        recyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = dialogSelectableAdapter
+        }
+        dialogSelectableAdapter.submitList(ingredients) // 다이얼로그에 표시할 재료 목록 제출
+
+        // MaterialAlertDialogBuilder를 사용하여 다이얼로그 생성
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("재료 선택")
-            .setItems(ingredientNames) { _, which ->
-                val selectedIngredient = ingredients[which]
-                showQuantityPickerDialog(selectedIngredient)
+            .setView(dialogView) // 커스텀 뷰 설정
+            .setPositiveButton("선택") { dialog, _ ->
+                // 다이얼로그의 "선택" 버튼을 눌렀을 때, 선택된 재료들을 처리
+                val newlySelected = dialogSelectableAdapter.getSelectedItems() // SelectableIngredientAdapter에 이 함수를 추가해야 함
+                newlySelected.forEach { selected ->
+                    // 이미 추가된 재료가 있다면 제거하고 새로 추가 (수량 업데이트)
+                    selectedIngredients.removeAll { it.name == selected.name }
+                    selectedIngredients.add(selected)
+                }
+                selectedIngredientAdapter.submitList(selectedIngredients.toList()) // 하단 목록 업데이트
+                dialog.dismiss()
             }
-            .setNegativeButton("취소", null)
+            .setNegativeButton("취소") { dialog, _ ->
+                dialog.dismiss()
+            }
             .show()
     }
 

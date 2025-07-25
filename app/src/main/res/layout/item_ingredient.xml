@@ -35,4 +35,14 @@
         android:layout_marginStart="8dp"
         android:textSize="12sp"
         tools:text="1개" />
+
+    <TextView
+        android:id="@+id/tv_ingredient_dday"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="@color/design_default_color_error" tools:text="D-7" />
+
 </LinearLayout>
