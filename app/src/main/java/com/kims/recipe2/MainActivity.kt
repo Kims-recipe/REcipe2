@@ -1,12 +1,12 @@
 package com.kims.recipe2
 
-
+import android.content.Intent
 import android.os.Bundle
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.kims.recipe2.databinding.ActivityMainBinding
-import com.google.android.material.snackbar.Snackbar
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,11 +26,33 @@ class MainActivity : AppCompatActivity() {
 
         // FAB 클릭 리스너
         binding.fab.setOnClickListener {
-            // TODO: 식사 추가 다이얼로그 또는 화면 표시
-            Snackbar.make(it, "새로운 식사를 기록합니다.", Snackbar.LENGTH_SHORT).show()
+            showMealTypeDialog()
         }
 
         // FAB을 위한 더미 메뉴 클릭 방지
         binding.bottomNavigationView.menu.findItem(R.id.placeholder).isEnabled = false
+    }
+
+    // 식사 유형 선택 다이얼로그 표시 함수
+    private fun showMealTypeDialog() {
+        val mealTypes = arrayOf("외식", "집밥")
+        AlertDialog.Builder(this)
+            .setTitle("식사 유형 선택")
+            .setItems(mealTypes) { dialog, which ->
+                val selectedMealType = mealTypes[which]
+                navigateToMealActivity(selectedMealType)
+            }
+            .setNegativeButton("취소") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    // MealActivity로 이동하는 함수
+    private fun navigateToMealActivity(mealType: String) {
+        val intent = Intent(this, MealActivity::class.java).apply {
+            putExtra("MEAL_TYPE", mealType) // 선택된 식사 유형을 Intent에 추가
+        }
+        startActivity(intent)
     }
 }

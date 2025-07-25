@@ -4,6 +4,7 @@ plugins {
 //    id("kotlin-kapt")
 //    id("com.google.dagger.hilt.android")
     id("com.google.gms.google-services")
+    id("kotlin-parcelize") // 이 라인을 추가
 }
 
 android {
@@ -91,7 +92,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("com.kizitonwose.calendar:view:2.0.3")
-
-
+    implementation(libs.androidx.activity)
+    implementation("com.google.code.gson:gson:2.10.1")
 
 }
