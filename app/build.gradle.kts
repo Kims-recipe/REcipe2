@@ -96,7 +96,5 @@ dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
 
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
-
-
+    implementation("io.coil-kt:coil:2.6.0")
 }

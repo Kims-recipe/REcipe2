@@ -1,5 +1,5 @@
+// CalendarFragment.kt
 package com.kims.recipe2.ui.calendar
-
 
 import android.graphics.Color
 import android.os.Bundle
@@ -17,12 +17,10 @@ import com.kims.recipe2.databinding.CalendarDayLayoutBinding
 import com.kims.recipe2.databinding.FragmentCalendarBinding
 import com.google.android.material.snackbar.Snackbar
 import com.kizitonwose.calendar.core.CalendarDay
-import com.kizitonwose.calendar.core.CalendarMonth
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.view.MonthDayBinder
 import com.kizitonwose.calendar.view.ViewContainer
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -43,7 +41,6 @@ class CalendarFragment : Fragment() {
     }
     private var datesWithMeals = emptySet<LocalDate>()
 
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -58,22 +55,24 @@ class CalendarFragment : Fragment() {
         binding.rvMealRecords.layoutManager = LinearLayoutManager(requireContext())
         binding.rvMealRecords.adapter = mealAdapter
 
-        viewModel.getDatesWithMeals().observe(viewLifecycleOwner) {
+        // ViewModel의 LiveData를 관찰하여 UI 업데이트
+        viewModel.datesWithMeals.observe(viewLifecycleOwner) {
             datesWithMeals = it
             binding.calendarView.notifyCalendarChanged()
         }
 
-        viewModel.selectedDateMeals.observe(viewLifecycleOwner) { meals ->
+        viewModel.mealRecords.observe(viewLifecycleOwner) { meals ->
             binding.tvNoMeals.isVisible = meals.isEmpty()
             binding.rvMealRecords.isVisible = meals.isNotEmpty()
             mealAdapter.submitList(meals)
         }
 
+        setupCalendar()
+        selectDate(today) // 초기 날짜 선택
+    }
 
-        // onViewCreated 내부
-
+    private fun setupCalendar() {
         val daysOfWeek = daysOfWeek()
-// XML에 이미 TextView가 있으므로, 각 TextView에 텍스트만 설정합니다.
         binding.legendLayout.children.forEachIndexed { index, view ->
             (view as? TextView)?.text = daysOfWeek[index].getDisplayName(TextStyle.SHORT, Locale.KOREAN)
         }
@@ -83,7 +82,6 @@ class CalendarFragment : Fragment() {
         val endMonth = currentMonth.plusMonths(100)
         binding.calendarView.setup(startMonth, endMonth, daysOfWeek.first())
         binding.calendarView.scrollToMonth(currentMonth)
-
 
         class DayViewContainer(view: View) : ViewContainer(view) {
             lateinit var day: CalendarDay
@@ -148,8 +146,6 @@ class CalendarFragment : Fragment() {
                 binding.calendarView.smoothScrollToMonth(it.yearMonth.minusMonths(1))
             }
         }
-
-        selectDate(today) // 초기 날짜 선택
     }
 
     private fun selectDate(date: LocalDate) {
@@ -159,7 +155,7 @@ class CalendarFragment : Fragment() {
             oldDate?.let { binding.calendarView.notifyDateChanged(it) }
             binding.calendarView.notifyDateChanged(date)
 
-            viewModel.getMealsForDate(date)
+            viewModel.fetchMealRecordsForDate(date)
             binding.tvSelectedDateMealsTitle.text = "🍽️ 식단 (${date.monthValue}/${date.dayOfMonth})"
         }
     }

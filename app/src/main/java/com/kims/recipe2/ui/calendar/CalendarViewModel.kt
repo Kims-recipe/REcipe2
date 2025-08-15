@@ -1,50 +1,78 @@
+// CalendarViewModel.kt
 package com.kims.recipe2.ui.calendar
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.kims.recipe2.model.MealRecord
 import java.time.LocalDate
+import java.time.ZoneId
+import java.util.Date
 
 class CalendarViewModel : ViewModel() {
 
-    // Firestore에서 가져올 식단 데이터 (데모)
-    private val mealData = MutableLiveData<Map<LocalDate, List<MealRecord>>>()
+    private val db = FirebaseFirestore.getInstance()
+    private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-    private val _selectedDateMeals = MutableLiveData<List<MealRecord>>()
-    val selectedDateMeals: LiveData<List<MealRecord>> = _selectedDateMeals
+    // LiveData를 사용하여 특정 날짜의 식단 기록을 Fragment에 전달
+    private val _mealRecords = MutableLiveData<List<MealRecord>>()
+    val mealRecords: LiveData<List<MealRecord>> get() = _mealRecords
+
+    // 식단 기록이 있는 날짜를 저장하기 위한 LiveData
+    private val _datesWithMeals = MutableLiveData<Set<LocalDate>>()
+    val datesWithMeals: LiveData<Set<LocalDate>> get() = _datesWithMeals
 
     init {
-        loadMealData()
+        // ViewModel 초기화 시 전체 식단 기록을 가져와서 식단이 있는 날짜를 파악
+        fetchAllMealRecords()
     }
 
-    private fun loadMealData() {
-        // 실제로는 Firestore에서 비동기적으로 로드
-        val today = LocalDate.now()
-        val yesterday = today.minusDays(1)
-        val tomorrow = today.plusDays(1)
-
-        mealData.value = mapOf(
-            today to listOf(
-                MealRecord(id="1", name="아침: 계란후라이 토스트", type = "아침", calories = 350, protein = 18),
-                MealRecord(id="2", name="점심: 김치찌개", type = "점심", calories = 450, protein = 22)
-            ),
-            yesterday to listOf(
-                MealRecord(id="3", name="저녁: 닭가슴살 샐러드", type = "저녁", calories = 400, protein = 30)
-            ),
-            tomorrow to listOf(
-                MealRecord(id="4", name="저녁: 연어 샐러드 (예정)", type = "저녁", calories = 380, isPlanned = true)
-            )
-        )
+    private fun fetchAllMealRecords() {
+        if (userId == null) {
+            Log.e("CalendarViewModel", "User ID is null. Cannot fetch meal records.")
+            return
+        }
+        db.collection("users").document(userId).collection("mealRecords")
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val dates = querySnapshot.documents
+                    .mapNotNull { it.toObject(MealRecord::class.java) }
+                    .mapNotNull { it.date?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate() }
+                    .toSet()
+                _datesWithMeals.postValue(dates)
+            }
+            .addOnFailureListener { e ->
+                Log.e("CalendarViewModel", "Error fetching all meal records for dates", e)
+            }
     }
 
-    fun getMealsForDate(date: LocalDate) {
-        _selectedDateMeals.value = mealData.value?.get(date) ?: emptyList()
-    }
+    fun fetchMealRecordsForDate(date: LocalDate) {
+        if (userId == null) {
+            Log.e("CalendarViewModel", "User ID is null. Cannot fetch meal records.")
+            return
+        }
 
-    fun getDatesWithMeals(): LiveData<Set<LocalDate>> {
-        val datesWithMeals = MutableLiveData<Set<LocalDate>>()
-        datesWithMeals.value = mealData.value?.keys ?: emptySet()
-        return datesWithMeals
+        // LocalDate를 Date 객체로 변환
+        val startOfDay = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant())
+        val endOfDay = Date.from(date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).minusNanos(1).toInstant())
+
+        db.collection("users").document(userId).collection("mealRecords")
+            .whereGreaterThanOrEqualTo("date", startOfDay)
+            .whereLessThanOrEqualTo("date", endOfDay)
+            .get()
+            .addOnSuccessListener { querySnapshot ->
+                val records = querySnapshot.documents.mapNotNull { document ->
+                    document.toObject(MealRecord::class.java)
+                }
+                _mealRecords.postValue(records)
+                Log.d("CalendarViewModel", "Fetched ${records.size} records for $date")
+            }
+            .addOnFailureListener { e ->
+                _mealRecords.postValue(emptyList())
+                Log.e("CalendarViewModel", "Error fetching meal records for $date", e)
+            }
     }
 }
