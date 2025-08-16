@@ -22,6 +22,7 @@ class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() 
         mealType: String,
         selectedIngredients: List<Ingredient>,
         imageUri: String?,
+        isHomemade: Boolean,
         onSuccess: () -> Unit, // 성공 시 호출될 콜백
         onFailure: (Exception) -> Unit // 실패 시 호출될 콜백
     ) {
@@ -49,7 +50,8 @@ class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() 
             calories = totalCalories,
             protein = totalProtein,
             date = null, // @ServerTimestamp가 자동으로 채워줄 것
-            isPlanned = false
+            isPlanned = false,
+            isHomemade = true
         )
 
         // MealRecord에 포함될 재료 정보 (필요한 데이터만 매핑)
@@ -73,7 +75,8 @@ class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() 
             "date" to FieldValue.serverTimestamp(), // 서버 타임스탬프
             "isPlanned" to mealRecord.isPlanned,
             "ingredients" to ingredientsForMealRecord, // 매핑된 재료 리스트
-            "imageUri" to imageUri.orEmpty()
+            "imageUri" to imageUri.orEmpty(),
+            "isHomemade" to isHomemade // isHomemade 필드 추가
         )
 
         db.collection("users").document(userId).collection("mealRecords")
@@ -89,6 +92,45 @@ class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() 
             .addOnFailureListener { e ->
                 Log.e("MealViewModel", "❌ 식사 기록 Firestore 저장 실패!", e)
                 onFailure(e) // UI에 실패를 알림
+            }
+    }
+    // 외식 기록을 저장하는 함수
+    fun saveEatingOutRecord(
+        mealName: String,
+        mealType: String,
+        imageUri: String?,
+        isHomemade: Boolean,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            val e = IllegalStateException("User ID is null. Cannot save eating out record.")
+            Log.e("MealViewModel", e.message, e)
+            onFailure(e)
+            return
+        }
+        val recordMap = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "name" to mealName,
+            "type" to mealType,
+            "calories" to 0, // 외식은 칼로리 정보를 나중에 채울 수 있음
+            "protein" to 0,
+            "date" to FieldValue.serverTimestamp(),
+            "isPlanned" to false,
+            "imageUri" to imageUri.orEmpty(),
+            "isHomemade" to isHomemade // isHomemade 필드 추가
+        )
+
+        db.collection("users").document(userId).collection("mealRecords")
+            .add(recordMap)
+            .addOnSuccessListener {
+                Log.d("MealViewModel", "✅ 외식 기록 Firestore 저장 성공!")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e("MealViewModel", "❌ 외식 기록 Firestore 저장 실패!", e)
+                onFailure(e)
             }
     }
 }

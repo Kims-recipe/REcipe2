@@ -207,6 +207,7 @@ class HomemadeMealFragment : Fragment() {
             mealName = mealName,
             mealType = selectedMealTime,
             selectedIngredients = selectedIngredients.toList(), // mutableList를 toList()로 넘겨 불변성 유지
+            isHomemade = true,
             imageUri = selectedImageUri?.toString(),
             onSuccess = {
                 Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
