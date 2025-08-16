@@ -48,11 +48,7 @@ class HomemadeMealFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // ViewModel 인스턴스 초기화. ViewModelProvider.Factory를 사용해야 안전합니다.
-        // Hilt/Koin 사용 시 @Inject 어노테이션 등으로 자동 주입됩니다.
-        // 임시 방편으로, fridgeViewModel이 이미 주입되었다고 가정하고 생성자에 넘겨줍니다.
-        // 실제 프로젝트에서는 ViewModelProvider.Factory 또는 DI 라이브러리를 사용하세요.
-        mealViewModel = MealViewModel(fridgeViewModel)
+        mealViewModel = MealViewModel()
     }
 
     override fun onCreateView(
@@ -210,6 +206,10 @@ class HomemadeMealFragment : Fragment() {
             isHomemade = true,
             imageUri = selectedImageUri?.toString(),
             onSuccess = {
+                // 식사 기록 성공 시, 여기서 직접 재료를 소모시킵니다.
+                selectedIngredients.forEach { ingredient ->
+                    fridgeViewModel.consumeIngredient(ingredient, ingredient.quantity)
+                }
                 Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
                 selectedIngredients.clear()
                 selectedIngredientAdapter.submitList(emptyList())

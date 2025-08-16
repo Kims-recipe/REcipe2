@@ -5,13 +5,16 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.kims.recipe2.model.DailyNutrition
+import com.kims.recipe2.model.Food
 import com.kims.recipe2.model.Ingredient
 import com.kims.recipe2.model.MealRecord
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
-// FridgeViewModel을 주입받기 위해 생성자에 추가 (Hilt/Koin 같은 DI 라이브러리 사용 시 더 쉬움)
-// ViewModelProvider.Factory를 사용해야 할 수도 있지만, 여기서는 간단하게 인스턴스화를 가정
-class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() {
+class MealViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -83,10 +86,6 @@ class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() 
             .add(recordMap) // MealRecord 객체 대신 Map을 직접 추가하여 ServerTimestamp 처리
             .addOnSuccessListener {
                 Log.d("MealViewModel", "✅ 식사 기록 Firestore 저장 성공!")
-                // 식사 기록 성공 후, 재료 소모 로직 호출 (FridgeViewModel 위임)
-                selectedIngredients.forEach { ingredient ->
-                    fridgeViewModel.consumeIngredient(ingredient, ingredient.quantity)
-                }
                 onSuccess() // UI에 성공을 알림
             }
             .addOnFailureListener { e ->
@@ -105,31 +104,92 @@ class MealViewModel(private val fridgeViewModel: FridgeViewModel) : ViewModel() 
     ) {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId == null) {
-            val e = IllegalStateException("User ID is null. Cannot save eating out record.")
-            Log.e("MealViewModel", e.message, e)
-            onFailure(e)
+            onFailure(IllegalStateException("User ID is null."))
             return
         }
-        val recordMap = hashMapOf(
-            "id" to UUID.randomUUID().toString(),
-            "name" to mealName,
-            "type" to mealType,
-            "calories" to 0, // 외식은 칼로리 정보를 나중에 채울 수 있음
-            "protein" to 0,
-            "date" to FieldValue.serverTimestamp(),
-            "isPlanned" to false,
-            "imageUri" to imageUri.orEmpty(),
-            "isHomemade" to isHomemade // isHomemade 필드 추가
-        )
 
-        db.collection("users").document(userId).collection("mealRecords")
-            .add(recordMap)
-            .addOnSuccessListener {
-                Log.d("MealViewModel", "✅ 외식 기록 Firestore 저장 성공!")
-                onSuccess()
+        // 1. 'foods' 컬렉션에서 음식 이름으로 검색
+        db.collection("foods")
+            .whereEqualTo("name", mealName)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { documents ->
+                val food = if (!documents.isEmpty) {
+                    documents.documents[0].toObject(Food::class.java)
+                } else {
+                    null // 검색 결과가 없으면 null
+                }
+
+                // 2. mealRecords에 저장할 데이터 맵 준비
+                val recordMap = hashMapOf(
+                    "id" to UUID.randomUUID().toString(),
+                    "name" to mealName,
+                    "type" to mealType,
+                    "calories" to (food?.calories?.toInt() ?: 0),
+                    "protein" to (food?.protein?.toInt() ?: 0),
+                    "date" to FieldValue.serverTimestamp(),
+                    "isPlanned" to false,
+                    "imageUri" to imageUri.orEmpty(),
+                    "isHomemade" to isHomemade
+                )
+
+                // 3. 트랜잭션 실행: dailyNutrition 업데이트 + mealRecords 생성
+                // 3-1. 오늘 날짜로 문서 ID 생성 (예: "2025-08-17")
+                val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+                val dailyNutritionRef = db.collection("users").document(userId)
+                    .collection("dailyNutrition").document(todayDateString)
+                val newMealRecordRef = db.collection("users").document(userId)
+                    .collection("mealRecords").document()
+
+
+                db.runTransaction { transaction ->
+                    val snapshot = transaction.get(dailyNutritionRef)
+
+                    if (snapshot.exists()) {
+                        // 3-2. 문서가 이미 존재하면, 각 영양소 값을 더해줍니다.
+                        // 👇👇👇 바로 이 부분에 타입을 명시해줍니다!
+                        val updates = hashMapOf<String, Any>(
+                            "calories" to FieldValue.increment(food?.calories ?: 0.0),
+                            "carbs" to FieldValue.increment(food?.carbs ?: 0.0),
+                            "protein" to FieldValue.increment(food?.protein ?: 0.0),
+                            "fat" to FieldValue.increment(food?.fat ?: 0.0),
+                            "sodium" to FieldValue.increment(food?.sodium ?: 0.0),
+                            "calcium" to FieldValue.increment(food?.calcium ?: 0.0),
+                            "iron" to FieldValue.increment(food?.iron ?: 0.0),
+                            "vitaminA" to FieldValue.increment(food?.vitaminA ?: 0.0),
+                            "vitaminC" to FieldValue.increment(food?.vitaminC ?: 0.0)
+                        )
+                        transaction.update(dailyNutritionRef, updates)
+                    } else {
+                        // 3-3. 문서가 없으면, 새로운 DailyNutrition 객체로 문서를 생성합니다.
+                        val newDailyData = DailyNutrition(
+                            date = Date(),
+                            calories = food?.calories ?: 0.0,
+                            carbs = food?.carbs ?: 0.0,
+                            protein = food?.protein ?: 0.0,
+                            fat = food?.fat ?: 0.0,
+                            sodium = food?.sodium ?: 0.0,
+                            calcium = food?.calcium ?: 0.0,
+                            iron = food?.iron ?: 0.0,
+                            vitaminA = food?.vitaminA ?: 0.0,
+                            vitaminC = food?.vitaminC ?: 0.0
+                        )
+                        transaction.set(dailyNutritionRef, newDailyData)
+                    }
+
+                    // 3-4. mealRecords에도 새로운 기록을 추가합니다.
+                    transaction.set(newMealRecordRef, recordMap)
+                    null
+                }.addOnSuccessListener {
+                    Log.d("MealViewModel", "✅ 외식 기록 및 일일 영양정보 업데이트 성공!")
+                    onSuccess()
+                }.addOnFailureListener { e ->
+                    Log.e("MealViewModel", "❌ 트랜잭션 실패!", e)
+                    onFailure(e)
+                }
             }
             .addOnFailureListener { e ->
-                Log.e("MealViewModel", "❌ 외식 기록 Firestore 저장 실패!", e)
+                Log.e("MealViewModel", "❌ 'foods' 컬렉션 검색 실패!", e)
                 onFailure(e)
             }
     }
