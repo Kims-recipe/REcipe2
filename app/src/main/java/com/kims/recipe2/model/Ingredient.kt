@@ -11,5 +11,15 @@ data class Ingredient(
     val quantity: Int = 1,       // 개수
     val amount: Double = 0.0,    // 양 (g, ml 등)
     val unit: String = "개",      // 단위 (개, g, ml 등)
-    val expirationDate: Date? = null // 유통기한 필드 추가
+    val expirationDate: Date? = null, // 유통기한 필드 추가
+    // 👇 영양소 필드 추가
+    val calories: Double = 0.0,
+    val carbs: Double = 0.0,
+    val protein: Double = 0.0,
+    val fat: Double = 0.0,
+    val calcium: Double = 0.0,
+    val iron: Double = 0.0,
+    val sodium: Double = 0.0,
+    val vitaminA: Double = 0.0,
+    val vitaminC: Double = 0.0
 )

@@ -68,7 +68,7 @@ class HomeViewModel : ViewModel() {
     private fun loadFoods() {
         _isFoodsLoading.value = true // 로딩 시작
         db.collection("foods")
-            .limit(10) // 한 번에 10개만 가져오도록 제한
+            .limit(1) // 한 번에 10개만 가져오도록 제한
             .get()
             .addOnSuccessListener { result ->
                 // 성공 시, Firestore 문서를 Food 객체 리스트로 자동 변환
