@@ -23,9 +23,13 @@ class SignUpActivity : AppCompatActivity() {
             val email = binding.etEmail.text.toString().trim()
             val password = binding.etPassword.text.toString().trim()
             val confirmPassword = binding.etConfirmPassword.text.toString().trim()
+            val height = binding.etHeight.text.toString().toIntOrNull() ?: 0
+            val weight = binding.etWeight.text.toString().toIntOrNull() ?: 0
+            val gender = if (binding.rbMale.isChecked) "남성" else "여성"
+
 
             if (email.isNotEmpty() && password.isNotEmpty() && confirmPassword.isNotEmpty()) {
-                viewModel.signUp(email, password, confirmPassword)
+                viewModel.signUp(email, password, confirmPassword, height, weight, gender)
             } else {
                 Toast.makeText(this, "모든 항목을 입력해주세요.", Toast.LENGTH_SHORT).show()
             }

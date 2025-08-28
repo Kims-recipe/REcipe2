@@ -10,6 +10,7 @@ import com.google.firebase.firestore.Query
 import com.kims.recipe2.model.DailyNutrition
 import com.kims.recipe2.model.MyPageStat
 import com.kims.recipe2.model.NutritionItem
+import com.kims.recipe2.model.UserInfo
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -31,14 +32,34 @@ class MyPageViewModel : ViewModel() {
 
     private val _stats = MutableLiveData<List<MyPageStat>>()
     val stats: LiveData<List<MyPageStat>> = _stats
+
     private val _weeklyProgress = MutableLiveData<List<NutritionItem>>()
     val weeklyProgress: LiveData<List<NutritionItem>> = _weeklyProgress
+
     private val _achievement = MutableLiveData<Pair<String, String>>()
     val achievement: LiveData<Pair<String, String>> = _achievement
 
+    // 사용자 정보 LiveData 추가
+    private val _userInfo = MutableLiveData<UserInfo>()
+    val userInfo: LiveData<UserInfo> = _userInfo
+
     init {
         loadStaticData()
+        fetchUserInfo() // 사용자 정보 불러오기
         loadNutritionDataFor(TimePeriod.DAILY, "칼로리") // 기본값
+    }
+
+    private fun fetchUserInfo() {
+        if (userId == null) return
+        db.collection("users").document(userId)
+            .collection("userInfo").document("profile")
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    _userInfo.value = document.toObject(UserInfo::class.java)
+                }
+            }
+            .addOnFailureListener { Log.e("MyPageViewModel", "사용자 정보 로딩 실패", it) }
     }
 
     private fun loadStaticData() {
@@ -132,7 +153,6 @@ class MyPageViewModel : ViewModel() {
         val today = Calendar.getInstance()
         val target = Calendar.getInstance().apply { time = date }
 
-        // 연도가 다를 경우를 대비한 주차 계산
         var weekDiff = 0
         if (today.get(Calendar.YEAR) != target.get(Calendar.YEAR)){
             val daysBetween = ((today.timeInMillis - target.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
