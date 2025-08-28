@@ -34,7 +34,7 @@ class HomemadeMealFragment : Fragment() {
     private lateinit var allIngredientAdapter: IngredientAdapter
 
     private lateinit var categoryAdapter: FridgeCategoryAdapter
-    private lateinit var selectedIngredientAdapter: IngredientAdapter
+    private lateinit var selectedIngredientAdapter: SelectableIngredientAdapter // ✅
 
     private var selectedMealTime: String = "아침"
     private var selectedImageUri: Uri? = null
@@ -68,8 +68,12 @@ class HomemadeMealFragment : Fragment() {
             showIngredientSelectionDialog(ingredients)
         }
 
-        selectedIngredientAdapter = IngredientAdapter(onItemClick = { ingredient ->
-            showRemoveDialog(ingredient)
+        // selectedIngredientAdapter = IngredientAdapter(onItemClick = { ingredient -> ... }) ❌
+        // ✅ 이제 SelectableIngredientAdapter를 사용하고, showIngredientSelectionDialog에서 선택된 재료를 업데이트합니다.
+        selectedIngredientAdapter = SelectableIngredientAdapter(onSelectionChanged = { selectedList ->
+            // 콜백을 통해 선택된 목록을 받아옴
+            selectedIngredients.clear()
+            selectedIngredients.addAll(selectedList)
         })
 
         binding.rvFridgeCategories.apply {

@@ -33,10 +33,8 @@ class FridgeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. 각 구역 클릭 리스너 설정 (로직 변경)
         setupSectionClickListeners()
 
-        // --- 기존 코드 (카테고리 목록, 재료 목록 RecyclerView 설정) ---
         val categoryAdapter = FridgeCategoryAdapter { category ->
 //            showAddIngredientDialog(category.name)
             navigateToIngredientList("category", category.name)
@@ -50,7 +48,16 @@ class FridgeFragment : Fragment() {
             categoryAdapter.submitList(it)
         }
 
-        val ingredientAdapter = IngredientAdapter()
+        val ingredientAdapter = IngredientAdapter(
+            onItemClick = { ingredient ->
+                // 재료 아이템 클릭 시 동작 (예: 상세 정보 보기)
+                // 현재 코드에는 onItemClick 로직이 없으므로 비워둡니다.
+            },
+            onDeleteClick = { ingredient ->
+                // 재료 삭제 버튼 클릭 시 ViewModel의 함수 호출
+                viewModel.deleteIngredient(ingredient)
+            }
+        )
         binding.rvIngredients.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = ingredientAdapter
@@ -58,7 +65,6 @@ class FridgeFragment : Fragment() {
         viewModel.ingredients.observe(viewLifecycleOwner) { ingredients ->
             ingredientAdapter.submitList(ingredients)
         }
-        // --- 여기까지 ---
     }
 
     /**

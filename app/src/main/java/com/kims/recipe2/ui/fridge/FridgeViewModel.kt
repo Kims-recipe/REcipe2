@@ -101,27 +101,19 @@ class FridgeViewModel : ViewModel() {
             }
     }
 
-    // 4. 새로운 재료를 Firestore에 추가하는 함수
-//    fun addIngredient(ingredient: Ingredient) { // Ingredient 객체를 통째로 받도록 수정
-//        // --- 디버깅을 위한 로그 추가 ---
-//        Log.d("FridgeViewModel", "addIngredient 호출됨")
-//        Log.d("FridgeViewModel", "현재 로그인된 User ID: $userId")
-//        Log.d("FridgeViewModel", "추가할 재료 정보: $ingredient")
-//        // ----------------------------
-//
-//        if (userId == null) {
-//            Log.e("FridgeViewModel", "User ID가 null입니다. 로그인 상태를 확인하세요.")
-//            return
-//        }
-//
-//        db.collection("users").document(userId).collection("ingredients")
-//            .add(ingredient) // Ingredient 객체를 직접 추가
-//            .addOnSuccessListener { documentReference ->
-//                // --- 성공/실패 로그 추가 ---
-//                Log.d("FridgeViewModel", "✅ 재료 추가 성공! 문서 ID: ${documentReference.id}")
-//            }
-//            .addOnFailureListener { e ->
-//                Log.e("FridgeViewModel", "❌ 재료 추가 실패!", e)
-//            }
-//    }
+    fun deleteIngredient(ingredient: Ingredient) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("FridgeViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 삭제할 수 없습니다.")
+            return
+        }
+
+        db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("FridgeViewModel", "✅ 재료 삭제 성공: ${ingredient.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FridgeViewModel", "❌ 재료 삭제 실패: ${ingredient.name}", e)
+            }
+    }
 }

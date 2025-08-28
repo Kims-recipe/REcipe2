@@ -8,6 +8,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.kims.recipe2.model.DailyNutrition
 import com.kims.recipe2.model.Food
 import com.kims.recipe2.model.Ingredient
+import com.kims.recipe2.model.MealRecord
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -188,6 +189,30 @@ class MealViewModel : ViewModel() {
             }
             .addOnFailureListener { e ->
                 Log.e("MealViewModel", "❌ 'foods' 컬렉션 검색 실패!", e)
+                onFailure(e)
+            }
+    }
+    // 👇 식단 기록 삭제 함수 추가
+    fun deleteMealRecord(mealRecord: MealRecord, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            onFailure(IllegalStateException("User ID is null."))
+            return
+        }
+
+        if (mealRecord.id.isEmpty()) {
+            onFailure(IllegalArgumentException("Meal record ID is empty."))
+            return
+        }
+
+        db.collection("users").document(userId).collection("mealRecords").document(mealRecord.id)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("MealViewModel", "✅ 식단 기록 삭제 성공: ${mealRecord.name}")
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e("MealViewModel", "❌ 식단 기록 삭제 실패: ${mealRecord.name}", e)
                 onFailure(e)
             }
     }

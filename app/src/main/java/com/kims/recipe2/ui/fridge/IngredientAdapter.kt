@@ -13,12 +13,14 @@ import com.kims.recipe2.databinding.ItemIngredientBinding
 import com.kims.recipe2.util.DateUtil
 
 class IngredientAdapter(
-    private val onItemClick: ((Ingredient) -> Unit)? = null
+    private val onItemClick: ((Ingredient) -> Unit)? = null,
+    private val onDeleteClick: ((Ingredient) -> Unit)? = null
 ) : ListAdapter<Ingredient, IngredientAdapter.IngredientViewHolder>(DiffCallback) {
 
     class IngredientViewHolder(
         private val binding: ItemIngredientBinding,
-        private val onItemClick: ((Ingredient) -> Unit)?
+        private val onItemClick: ((Ingredient) -> Unit)?,
+        private val onDeleteClick: ((Ingredient) -> Unit)?
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(ingredient: Ingredient) {
             binding.tvIngredientName.text = ingredient.name
@@ -59,12 +61,15 @@ class IngredientAdapter(
             binding.root.setOnClickListener {
                 onItemClick?.invoke(ingredient)
             }
+            binding.ingredientDelete.setOnClickListener {
+                onDeleteClick?.invoke(ingredient)
+            }
         }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): IngredientViewHolder {
         val binding = ItemIngredientBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return IngredientViewHolder(binding, onItemClick)
+        return IngredientViewHolder(binding, onItemClick, onDeleteClick)
     }
 
     override fun onBindViewHolder(holder: IngredientViewHolder, position: Int) {

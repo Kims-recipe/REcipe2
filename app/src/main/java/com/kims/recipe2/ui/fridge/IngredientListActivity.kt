@@ -45,7 +45,12 @@ class IngredientListActivity : AppCompatActivity() {
         binding.toolbar.setNavigationOnClickListener { finish() }
 
         // RecyclerView 및 Adapter 설정
-        val ingredientAdapter = IngredientAdapter()
+        val ingredientAdapter = IngredientAdapter(
+            onDeleteClick = { ingredient ->
+                // 삭제 버튼 클릭 시 ViewModel의 함수 호출
+                viewModel.deleteIngredient(ingredient)
+            }
+        )
         binding.rvIngredientList.apply {
             layoutManager = LinearLayoutManager(this@IngredientListActivity)
             adapter = ingredientAdapter

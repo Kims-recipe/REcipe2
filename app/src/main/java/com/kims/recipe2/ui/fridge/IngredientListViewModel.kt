@@ -90,4 +90,19 @@ class IngredientListViewModel : ViewModel() {
                 // 만약 검색에 실패하더라도 재료는 추가하고 싶다면, 여기에 영양정보 없이 추가하는 코드를 넣을 수 있습니다.
             }
     }
+    fun deleteIngredient(ingredient: Ingredient) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("IngredientListViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 삭제할 수 없습니다.")
+            return
+        }
+
+        db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("IngredientListViewModel", "✅ 재료 삭제 성공: ${ingredient.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("IngredientListViewModel", "❌ 재료 삭제 실패: ${ingredient.name}", e)
+            }
+    }
 }

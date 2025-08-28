@@ -11,14 +11,16 @@ import coil.load
 import com.kims.recipe2.databinding.ItemMealRecordBinding
 import com.kims.recipe2.model.MealRecord
 
-class MealRecordAdapter(private val onShareClick: (MealRecord) -> Unit) :
-    ListAdapter<MealRecord, MealRecordAdapter.MealViewHolder>(MealDiffCallback) {
+class MealRecordAdapter(
+    private val onShareClick: (MealRecord) -> Unit,
+    private val onItemClick: (MealRecord) -> Unit
+) : ListAdapter<MealRecord, MealRecordAdapter.MealViewHolder>(MealDiffCallback) {
 
     private val mealIcons = mapOf("아침" to "🍳", "점심" to "🍜", "저녁" to "🥗", "간식" to "🍰")
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MealViewHolder {
         val binding = ItemMealRecordBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MealViewHolder(binding, onShareClick, mealIcons)
+        return MealViewHolder(binding, onShareClick, onItemClick, mealIcons)
     }
 
     override fun onBindViewHolder(holder: MealViewHolder, position: Int) {
@@ -28,6 +30,7 @@ class MealRecordAdapter(private val onShareClick: (MealRecord) -> Unit) :
     class MealViewHolder(
         private val binding: ItemMealRecordBinding,
         private val onShareClick: (MealRecord) -> Unit,
+        private val onItemClick: (MealRecord) -> Unit, // ✨ 새로운 클릭 리스너 추가
         private val mealIcons: Map<String, String>
     ) : RecyclerView.ViewHolder(binding.root) {
 
@@ -51,6 +54,9 @@ class MealRecordAdapter(private val onShareClick: (MealRecord) -> Unit) :
                 binding.btnShare.text = "📸 공유"
             }
             binding.btnShare.setOnClickListener { onShareClick(meal) }
+            binding.root.setOnClickListener {
+                onItemClick(meal)
+            }
         }
     }
 
