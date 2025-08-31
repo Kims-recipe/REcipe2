@@ -8,6 +8,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.kims.recipe2.model.Food
 import com.kims.recipe2.model.Ingredient
+import java.util.Calendar
+import java.util.Date
 
 class IngredientListViewModel : ViewModel() {
 
@@ -16,6 +18,59 @@ class IngredientListViewModel : ViewModel() {
 
     private val _ingredients = MutableLiveData<List<Ingredient>>()
     val ingredients: LiveData<List<Ingredient>> = _ingredients
+
+    private val _searchResults = MutableLiveData<List<String>>()
+    val searchResults: LiveData<List<String>> = _searchResults
+
+    // 👇 [추가] 계산된 유통기한을 Activity에 전달하기 위한 LiveData
+    private val _calculatedExpirationDate = MutableLiveData<Date>()
+    val calculatedExpirationDate: LiveData<Date> = _calculatedExpirationDate
+
+    private var allFoodIngredients: List<String>? = null
+
+    // 👇 [추가] 재료 이름으로 유통기한을 계산하는 함수
+    fun calculateExpirationDateFor(ingredientName: String) {
+        db.collection("food_ingredients")
+            .whereEqualTo("name", ingredientName)
+            .limit(1)
+            .get()
+            .addOnSuccessListener { documents ->
+                val food = documents.firstOrNull()?.toObject(Food::class.java)
+                val shelfLife = food?.expirationDate ?: 0 // 소비기한(일)
+
+                // 오늘 날짜 + 소비기한으로 유통기한 계산
+                val calendar = Calendar.getInstance()
+                calendar.add(Calendar.DAY_OF_YEAR, shelfLife)
+                _calculatedExpirationDate.value = calendar.time
+            }
+            .addOnFailureListener {
+                // 실패 시 오늘 날짜를 기본값으로 설정하거나 다른 처리를 할 수 있음
+                _calculatedExpirationDate.value = Date()
+            }
+    }
+
+
+    fun fetchAllFoodIngredients() {
+        if (allFoodIngredients != null) return
+
+        db.collection("food_ingredients")
+            .get()
+            .addOnSuccessListener { documents ->
+                allFoodIngredients = documents.mapNotNull { it.getString("name") }
+                Log.d("AutocompleteCache", "Successfully cached ${allFoodIngredients?.size} ingredients.")
+            }
+            .addOnFailureListener { e ->
+                Log.e("AutocompleteCache", "Error caching ingredients", e)
+            }
+    }
+
+    fun searchFoodIngredients(query: String) {
+        if (query.isBlank() || allFoodIngredients == null) {
+            _searchResults.value = emptyList()
+            return
+        }
+        _searchResults.value = allFoodIngredients!!.filter { it.contains(query, ignoreCase = true) }.take(10)
+    }
 
     fun fetchFilteredIngredients(filterType: String, filterValue: String) {
         if (userId == null) {
@@ -38,19 +93,16 @@ class IngredientListViewModel : ViewModel() {
                         }
                     }
                     _ingredients.value = ingredientListWithIds
-                    Log.d("IngredientListViewModel", "Fetched ${ingredientListWithIds.size} ingredients with IDs.")
-                } ?: Log.d("IngredientListViewModel", "Snapshot is null.")
+                }
             }
     }
 
-    // 👇 재료 추가 로직 수정
     fun addIngredient(ingredient: Ingredient) {
         if (userId == null) {
             Log.e("IngredientListViewModel", "User ID가 null입니다. 로그인 상태를 확인하세요.")
             return
         }
 
-        // 1. food_ingredients 컬렉션에서 재료 이름으로 영양 정보 검색
         db.collection("food_ingredients")
             .whereEqualTo("name", ingredient.name)
             .limit(1)
@@ -59,7 +111,7 @@ class IngredientListViewModel : ViewModel() {
                 val foodNutrition = if (!documents.isEmpty) {
                     documents.documents[0].toObject(Food::class.java)
                 } else {
-                    null // 검색 결과가 없으면 null
+                    null
                 }
 
                 // 2. 검색된 영양 정보를 포함하여 최종 재료 객체 생성
@@ -76,7 +128,6 @@ class IngredientListViewModel : ViewModel() {
                     vitaminC = (foodNutrition?.vitaminC ?: 0.0) * ratio
                 )
 
-                // 3. 영양 정보가 포함된 재료를 사용자의 ingredients 컬렉션에 저장
                 db.collection("users").document(userId).collection("ingredients")
                     .add(finalIngredient)
                     .addOnSuccessListener { documentReference ->
@@ -88,7 +139,6 @@ class IngredientListViewModel : ViewModel() {
             }
             .addOnFailureListener { e ->
                 Log.e("IngredientListViewModel", "❌ 재료 영양정보 검색 실패!", e)
-                // 만약 검색에 실패하더라도 재료는 추가하고 싶다면, 여기에 영양정보 없이 추가하는 코드를 넣을 수 있습니다.
             }
     }
     fun deleteIngredient(ingredient: Ingredient) {

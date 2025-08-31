@@ -2,18 +2,22 @@ package com.kims.recipe2.ui.fridge
 
 import android.app.DatePickerDialog
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.kims.recipe2.R
-import com.kims.recipe2.model.Ingredient
 import com.kims.recipe2.databinding.ActivityIngredientListBinding
+import com.kims.recipe2.model.Ingredient
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -23,76 +27,109 @@ class IngredientListActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityIngredientListBinding
     private val viewModel: IngredientListViewModel by viewModels()
-    private val fridgeViewModel: FridgeViewModel by viewModels() // 카테고리 목록을 가져오기 위함
+    private val fridgeViewModel: FridgeViewModel by viewModels()
     private var filterType = ""
     private var filterValue = ""
-    // 유통기한을 저장할 변수
     private var selectedExpirationDate: Date? = null
+
+    private var validIngredients = listOf<String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityIngredientListBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Intent에서 필터 정보 가져오기
         filterType = intent.getStringExtra("FILTER_TYPE") ?: ""
         filterValue = intent.getStringExtra("FILTER_VALUE") ?: ""
 
-        // 툴바 설정
-        binding.toolbar.title = "$filterValue 재료 목록"
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.toolbar.setNavigationOnClickListener { finish() }
+        setupToolbar()
+        setupRecyclerView()
+        observeViewModel()
 
-        // RecyclerView 및 Adapter 설정
-        val ingredientAdapter = IngredientAdapter(
-            onDeleteClick = { ingredient ->
-                // 삭제 버튼 클릭 시 ViewModel의 함수 호출
-                viewModel.deleteIngredient(ingredient)
-            }
-        )
-        binding.rvIngredientList.apply {
-            layoutManager = LinearLayoutManager(this@IngredientListActivity)
-            adapter = ingredientAdapter
-        }
+        viewModel.fetchAllFoodIngredients()
 
-        // 필터링된 재료 목록 관찰
-        viewModel.ingredients.observe(this) {
-            ingredientAdapter.submitList(it)
-        }
-        viewModel.fetchFilteredIngredients(filterType, filterValue)
-
-        // 재료 추가 FAB 클릭 리스너
         binding.fabAddIngredient.setOnClickListener {
             showAddIngredientDialog()
         }
     }
 
+    private fun setupToolbar() {
+        binding.toolbar.title = "$filterValue 재료 목록"
+        setSupportActionBar(binding.toolbar)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.toolbar.setNavigationOnClickListener { finish() }
+    }
+
+    private fun setupRecyclerView() {
+        val ingredientAdapter = IngredientAdapter()
+        binding.rvIngredientList.apply {
+            layoutManager = LinearLayoutManager(this@IngredientListActivity)
+            adapter = ingredientAdapter
+        }
+    }
+
+    private fun observeViewModel() {
+        viewModel.ingredients.observe(this) {
+            (binding.rvIngredientList.adapter as IngredientAdapter).submitList(it)
+        }
+        viewModel.fetchFilteredIngredients(filterType, filterValue)
+    }
+
     private fun showAddIngredientDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_ingredient_detail, null)
-        val nameEditText = dialogView.findViewById<TextInputEditText>(R.id.et_ingredient_name)
+        val nameEditText = dialogView.findViewById<AutoCompleteTextView>(R.id.et_ingredient_name)
         val categorySpinner = dialogView.findViewById<Spinner>(R.id.spinner_category)
         val locationSpinner = dialogView.findViewById<Spinner>(R.id.spinner_location)
         val quantityEditText = dialogView.findViewById<TextInputEditText>(R.id.et_quantity)
-        val expirationDateTextView = dialogView.findViewById<TextView>(R.id.tv_expiration_date) //
-        val amountEditText = dialogView.findViewById<TextInputEditText>(R.id.et_amount)//
+        val expirationDateTextView = dialogView.findViewById<TextView>(R.id.tv_expiration_date)
+        val amountEditText = dialogView.findViewById<TextInputEditText>(R.id.et_amount)
 
-        // 유통기한 TextView 클릭 리스너 설정
+        val autocompleteAdapter = ArrayAdapter<String>(this, android.R.layout.simple_dropdown_item_1line)
+        nameEditText.setAdapter(autocompleteAdapter)
+        nameEditText.threshold = 1
+
+        // 👇 [추가] 사용자가 추천 목록의 아이템을 클릭했을 때의 동작
+        nameEditText.setOnItemClickListener { _, _, position, _ ->
+            val selectedName = autocompleteAdapter.getItem(position)
+            if (selectedName != null) {
+                viewModel.calculateExpirationDateFor(selectedName)
+            }
+        }
+
+        nameEditText.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                viewModel.searchFoodIngredients(s.toString())
+            }
+            override fun afterTextChanged(s: Editable?) {}
+        })
+
+        viewModel.searchResults.observe(this) { results ->
+            validIngredients = results
+            autocompleteAdapter.clear()
+            autocompleteAdapter.addAll(results)
+            autocompleteAdapter.notifyDataSetChanged()
+        }
+
+        // 👇 [추가] 계산된 유통기한 LiveData 관찰 및 UI 업데이트
+        viewModel.calculatedExpirationDate.observe(this) { date ->
+            selectedExpirationDate = date
+            val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+            expirationDateTextView.text = dateFormat.format(date)
+        }
+
         expirationDateTextView.setOnClickListener {
             showDatePickerDialog(expirationDateTextView)
         }
 
-        // 카테고리 스피너 설정
         val categoryNames = fridgeViewModel.categories.value?.map { it.name } ?: emptyList()
         val categoryAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, categoryNames)
         categorySpinner.adapter = categoryAdapter
 
-        // 위치 스피너 설정
         val locationNames = listOf("냉동실", "냉장실", "야채실", "문짝")
         val locationAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, locationNames)
         locationSpinner.adapter = locationAdapter
 
-        // 필터 정보에 따라 기본값 설정
         if (filterType == "category") {
             val catIndex = categoryNames.indexOf(filterValue)
             if (catIndex != -1) categorySpinner.setSelection(catIndex)
@@ -107,20 +144,22 @@ class IngredientListActivity : AppCompatActivity() {
             .setPositiveButton("추가") { _, _ ->
                 val quantity2 = quantityEditText.text.toString().toIntOrNull() ?: 0
                 val amount2 = amountEditText.text.toString().toDoubleOrNull() ?: 0.0
-                val newIngredient = Ingredient(
-                    name = nameEditText.text.toString(),
-                    category = categorySpinner.selectedItem.toString(),
-                    location = locationSpinner.selectedItem.toString(),
-                    quantity = quantity2,
-                    amount = amount2,
-                    unit = "g",
-                    expirationDate = selectedExpirationDate // 선택된 유통기한 전달
-                )
-                if (newIngredient.name.isNotEmpty()) {
+                val ingredientName = nameEditText.text.toString()
+                if (ingredientName.isNotEmpty() && validIngredients.contains(ingredientName)) {
+                    val newIngredient = Ingredient(
+                        name = ingredientName,
+                        category = categorySpinner.selectedItem.toString(),
+                        location = locationSpinner.selectedItem.toString(),
+                        quantity = quantity2,
+                        amount = amount2,
+                        unit = "g",
+                        expirationDate = selectedExpirationDate
+                    )
                     viewModel.addIngredient(newIngredient)
+                    selectedExpirationDate = null
+                } else {
+                    Toast.makeText(this, "목록에 있는 유효한 재료를 선택해주세요.", Toast.LENGTH_SHORT).show()
                 }
-                // 다이얼로그가 닫힐 때 선택된 날짜 초기화
-                selectedExpirationDate = null
             }
             .setNegativeButton("취소", null)
             .show()
@@ -128,28 +167,21 @@ class IngredientListActivity : AppCompatActivity() {
 
     private fun showDatePickerDialog(expirationDateTextView: TextView) {
         val calendar = Calendar.getInstance()
-        selectedExpirationDate?.let { date ->
-            calendar.time = date // 이전에 선택된 날짜가 있다면 그 날짜를 DatePicker의 초기값으로 설정
-        }
+        selectedExpirationDate?.let { date -> calendar.time = date }
 
         val year = calendar.get(Calendar.YEAR)
         val month = calendar.get(Calendar.MONTH)
         val day = calendar.get(Calendar.DAY_OF_MONTH)
 
-        val datePickerDialog = DatePickerDialog(
+        DatePickerDialog(
             this,
             { _, selectedYear, selectedMonth, selectedDayOfMonth ->
-                // 사용자가 날짜를 선택했을 때 실행될 콜백
                 calendar.set(selectedYear, selectedMonth, selectedDayOfMonth)
-                selectedExpirationDate = calendar.time // Date 객체로 저장
-
+                selectedExpirationDate = calendar.time
                 val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-                expirationDateTextView.text = dateFormat.format(selectedExpirationDate) // TextView에 날짜 표시
+                expirationDateTextView.text = dateFormat.format(selectedExpirationDate!!)
             },
-            year,
-            month,
-            day
-        )
-        datePickerDialog.show()
+            year, month, day
+        ).show()
     }
 }
