@@ -100,6 +100,7 @@ class EatingOutFragment : Fragment() {
                 Toast.makeText(requireContext(), "✅ 외식 기록 완료!", Toast.LENGTH_SHORT).show()
                 binding.etMealName.text?.clear()
                 selectedImageUri = null
+                parentFragmentManager.popBackStack()
             },
             onFailure = { e ->
                 Toast.makeText(requireContext(), "❌ 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()

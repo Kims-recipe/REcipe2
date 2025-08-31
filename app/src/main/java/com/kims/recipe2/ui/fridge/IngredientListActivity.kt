@@ -74,7 +74,8 @@ class IngredientListActivity : AppCompatActivity() {
         val categorySpinner = dialogView.findViewById<Spinner>(R.id.spinner_category)
         val locationSpinner = dialogView.findViewById<Spinner>(R.id.spinner_location)
         val quantityEditText = dialogView.findViewById<TextInputEditText>(R.id.et_quantity)
-        val expirationDateTextView = dialogView.findViewById<TextView>(R.id.tv_expiration_date) // TextView로 변경
+        val expirationDateTextView = dialogView.findViewById<TextView>(R.id.tv_expiration_date) //
+        val amountEditText = dialogView.findViewById<TextInputEditText>(R.id.et_amount)//
 
         // 유통기한 TextView 클릭 리스너 설정
         expirationDateTextView.setOnClickListener {
@@ -104,11 +105,15 @@ class IngredientListActivity : AppCompatActivity() {
             .setTitle("새 재료 추가")
             .setView(dialogView)
             .setPositiveButton("추가") { _, _ ->
+                val quantity2 = quantityEditText.text.toString().toIntOrNull() ?: 0
+                val amount2 = amountEditText.text.toString().toDoubleOrNull() ?: 0.0
                 val newIngredient = Ingredient(
                     name = nameEditText.text.toString(),
                     category = categorySpinner.selectedItem.toString(),
                     location = locationSpinner.selectedItem.toString(),
-                    quantity = quantityEditText.text.toString().toIntOrNull() ?: 1,
+                    quantity = quantity2,
+                    amount = amount2,
+                    unit = "g",
                     expirationDate = selectedExpirationDate // 선택된 유통기한 전달
                 )
                 if (newIngredient.name.isNotEmpty()) {

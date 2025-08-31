@@ -217,6 +217,7 @@ class HomemadeMealFragment : Fragment() {
                 Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
                 selectedIngredients.clear()
                 selectedIngredientAdapter.submitList(emptyList())
+                parentFragmentManager.popBackStack()
             },
             onFailure = { e ->
                 Toast.makeText(requireContext(), "❌ 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()

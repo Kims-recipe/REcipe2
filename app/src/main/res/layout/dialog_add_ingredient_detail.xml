@@ -28,7 +28,7 @@
     <Spinner
         android:id="@+id/spinner_category"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginTop="4dp"
         android:padding="12dp" />
 
@@ -42,7 +42,7 @@
     <Spinner
         android:id="@+id/spinner_location"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_marginTop="4dp"
         android:padding="12dp" />
 
@@ -57,7 +57,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="개수/양">
+            android:hint="개수">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/et_quantity"
@@ -70,10 +70,50 @@
         <Spinner
             android:id="@+id/spinner_unit"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="60dp"
             android:layout_marginStart="8dp"
             android:layout_gravity="center_vertical"
             android:padding="12dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:orientation="horizontal">
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="양 (g)">
+
+            <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_amount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="numberDecimal"
+            android:text="100" /> </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/tv_unit_g"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="8dp"
+            android:text="g"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <Spinner
+            android:id="@+id/gram_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_gravity="center_vertical"
+            android:padding="12dp"
+            android:visibility="gone"/>
     </LinearLayout>
 
     <TextView

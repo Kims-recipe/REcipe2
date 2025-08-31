@@ -63,16 +63,17 @@ class IngredientListViewModel : ViewModel() {
                 }
 
                 // 2. 검색된 영양 정보를 포함하여 최종 재료 객체 생성
+                val ratio = (ingredient.amount / 100.0) // 100g 당 영양소 기준
                 val finalIngredient = ingredient.copy(
-                    calories = foodNutrition?.calories ?: 0.0,
-                    carbs = foodNutrition?.carbs ?: 0.0,
-                    protein = foodNutrition?.protein ?: 0.0,
-                    fat = foodNutrition?.fat ?: 0.0,
-                    calcium = foodNutrition?.calcium ?: 0.0,
-                    iron = foodNutrition?.iron ?: 0.0,
-                    sodium = foodNutrition?.sodium ?: 0.0,
-                    vitaminA = foodNutrition?.vitaminA ?: 0.0,
-                    vitaminC = foodNutrition?.vitaminC ?: 0.0
+                    calories = (foodNutrition?.calories ?: 0.0) * ratio,
+                    carbs = (foodNutrition?.carbs ?: 0.0) * ratio,
+                    protein = (foodNutrition?.protein ?: 0.0) * ratio,
+                    fat = (foodNutrition?.fat ?: 0.0) * ratio,
+                    calcium = (foodNutrition?.calcium ?: 0.0) * ratio,
+                    iron = (foodNutrition?.iron ?: 0.0) * ratio,
+                    sodium = (foodNutrition?.sodium ?: 0.0) * ratio,
+                    vitaminA = (foodNutrition?.vitaminA ?: 0.0) * ratio,
+                    vitaminC = (foodNutrition?.vitaminC ?: 0.0) * ratio
                 )
 
                 // 3. 영양 정보가 포함된 재료를 사용자의 ingredients 컬렉션에 저장
