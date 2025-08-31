@@ -1,10 +1,10 @@
 package com.kims.recipe2.model
 
 import com.google.firebase.firestore.IgnoreExtraProperties
+import com.google.firebase.firestore.PropertyName
 
 @IgnoreExtraProperties
 data class Food(
-    // 필드 이름과 동일하게 속성 선언
     val name: String = "",
     val calories: Double = 0.0,
     val carbs: Double = 0.0,
@@ -14,5 +14,8 @@ data class Food(
     val iron: Double = 0.0,
     val sodium: Double = 0.0,
     val vitaminA: Double = 0.0,
-    val vitaminC: Double = 0.0
+    val vitaminC: Double = 0.0,
+    // 👇 Firestore의 'expiration_date' 필드를 읽기 위한 필드 추가
+    @get:PropertyName("expiration_date") @set:PropertyName("expiration_date")
+    var expirationDate: Int = 0
 )

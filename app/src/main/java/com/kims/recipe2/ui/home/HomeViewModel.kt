@@ -4,43 +4,50 @@ import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.kims.recipe2.model.DailyNutrition
 import com.kims.recipe2.model.Food
+import com.kims.recipe2.model.Ingredient
 import com.kims.recipe2.model.NutritionItem
+import com.kims.recipe2.model.UserInfo
+import com.kims.recipe2.util.DateUtil
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class HomeViewModel : ViewModel() {
 
-    // Firestore 인스턴스 초기화
     private val db = FirebaseFirestore.getInstance()
+    private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-    // 오늘 날짜를 위한 LiveData
     private val _todayDate = MutableLiveData<String>()
     val todayDate: LiveData<String> = _todayDate
 
-    // '영양 섭취 현황' 목록을 위한 LiveData
     private val _nutritionList = MutableLiveData<List<NutritionItem>>()
     val nutritionList: LiveData<List<NutritionItem>> = _nutritionList
 
-    // '부족한 영양소' 목록을 위한 LiveData
     private val _deficientList = MutableLiveData<List<NutritionItem>>()
     val deficientList: LiveData<List<NutritionItem>> = _deficientList
 
-    // 추천 음식(foods) 목록을 위한 LiveData
     private val _foods = MutableLiveData<List<Food>>()
     val foods: LiveData<List<Food>> = _foods
 
-    // 음식 목록 로딩 상태를 관리하는 LiveData
     private val _isFoodsLoading = MutableLiveData<Boolean>()
     val isFoodsLoading: LiveData<Boolean> = _isFoodsLoading
 
-    // ViewModel이 처음 생성될 때 모든 데이터를 로드합니다.
+    // 👇 [추가] 우선 소비 재료 LiveData
+    private val _priorityIngredients = MutableLiveData<List<Ingredient>>()
+    val priorityIngredients: LiveData<List<Ingredient>> = _priorityIngredients
+
+    private var userInfo: UserInfo? = null
+    private var todaysNutrition: DailyNutrition? = null
+
     init {
         loadTodayDate()
-        loadNutritionData()
         loadFoods()
+        fetchInitialData()
+        fetchPriorityIngredients() // 👇 [추가] 우선 소비 재료 로딩 함수 호출
     }
 
     private fun loadTodayDate() {
@@ -48,38 +55,94 @@ class HomeViewModel : ViewModel() {
         _todayDate.value = sdf.format(Date())
     }
 
-    private fun loadNutritionData() {
-        // 이 부분은 향후 사용자의 실제 섭취량 데이터를 기반으로 업데이트할 수 있습니다.
-        // 현재는 데모 데이터를 사용합니다.
-        _nutritionList.value = listOf(
-            NutritionItem("칼로리", "🔥", "#ff6b6b", 1650f, 2000f, "kcal"),
-            NutritionItem("단백질", "💪", "#4ecdc4", 45f, 60f, "g"),
-            NutritionItem("탄수화물", "🌾", "#45b7d1", 180f, 250f, "g"),
-            NutritionItem("지방", "🥑", "#f9ca24", 85f, 70f, "g")
-        )
+    // 👇 [추가] 우선 소비 재료를 가져오는 함수
+    private fun fetchPriorityIngredients() {
+        if (userId == null) return
 
-        _deficientList.value = listOf(
-            NutritionItem("비타민 C", "🍎", "#ff9ff3", 30f, 100f, "mg"),
-            NutritionItem("오메가-3", "🐟", "#54a0ff", 0.8f, 2.0f, "g")
-        )
+        db.collection("users").document(userId).collection("ingredients")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("HomeViewModel", "우선 소비 재료 로딩 실패", error)
+                    return@addSnapshotListener
+                }
+                val ingredients = snapshot?.toObjects(Ingredient::class.java) ?: emptyList()
+
+                // 유통기한과 남은 양을 기준으로 정렬
+                val sortedList = ingredients.sortedWith(
+                    compareBy(
+                        { DateUtil.calculateDDay(it.expirationDate) ?: Long.MAX_VALUE }, // D-day 오름차순
+                        { it.quantity } // 남은 양 오름차순
+                    )
+                ).take(5) // 상위 5개만 선택
+
+                _priorityIngredients.value = sortedList
+            }
     }
 
-    // Firestore의 'foods' 컬렉션에서 데이터를 가져오는 함수
+
+    private fun fetchInitialData() {
+        if (userId == null) return
+
+        db.collection("users").document(userId)
+            .collection("userInfo").document("profile")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("HomeViewModel", "사용자 정보 로딩 실패", error)
+                    return@addSnapshotListener
+                }
+                userInfo = snapshot?.toObject(UserInfo::class.java)
+                updateNutritionUI()
+            }
+
+        val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        db.collection("users").document(userId)
+            .collection("dailyNutrition").document(todayDateString)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("HomeViewModel", "오늘 영양정보 로딩 실패", error)
+                    return@addSnapshotListener
+                }
+                todaysNutrition = if (snapshot != null && snapshot.exists()) {
+                    snapshot.toObject(DailyNutrition::class.java)
+                } else {
+                    DailyNutrition()
+                }
+                updateNutritionUI()
+            }
+    }
+
+    private fun updateNutritionUI() {
+        val currentUserInfo = userInfo ?: return
+        val currentTodaysNutrition = todaysNutrition ?: DailyNutrition()
+
+        _nutritionList.value = listOf(
+            NutritionItem("칼로리", "🔥", "#ff6b6b", currentTodaysNutrition.calories.toFloat(), currentUserInfo.goalCalories.toFloat(), "kcal"),
+            NutritionItem("탄수화물", "🌾", "#45b7d1", currentTodaysNutrition.carbs.toFloat(), currentUserInfo.goalCarbs.toFloat(), "g"),
+            NutritionItem("단백질", "💪", "#4ecdc4", currentTodaysNutrition.protein.toFloat(), currentUserInfo.goalProtein.toFloat(), "g"),
+            NutritionItem("지방", "🥑", "#f9ca24", currentTodaysNutrition.fat.toFloat(), currentUserInfo.goalFat.toFloat(), "g")
+        )
+
+        val deficientItems = mutableListOf<NutritionItem>()
+        _nutritionList.value?.forEach {
+            if (it.current < it.goal * 0.5) {
+                deficientItems.add(it)
+            }
+        }
+        _deficientList.value = deficientItems
+    }
+
     private fun loadFoods() {
-        _isFoodsLoading.value = true // 로딩 시작
+        _isFoodsLoading.value = true
         db.collection("foods")
-            .limit(1) // 한 번에 10개만 가져오도록 제한
+            .limit(1)
             .get()
             .addOnSuccessListener { result ->
-                // 성공 시, Firestore 문서를 Food 객체 리스트로 자동 변환
-                val foodList = result.toObjects(Food::class.java)
-                _foods.value = foodList
-                _isFoodsLoading.value = false // 로딩 완료
+                _foods.value = result.toObjects(Food::class.java)
+                _isFoodsLoading.value = false
             }
             .addOnFailureListener { exception ->
-                // 실패 시, 로그를 남기고 로딩 상태를 종료
                 Log.w("HomeViewModel", "Error getting documents: ", exception)
-                _isFoodsLoading.value = false // 로딩 완료
+                _isFoodsLoading.value = false
             }
     }
 }
