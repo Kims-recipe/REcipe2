@@ -27,10 +27,10 @@ class SelectableIngredientAdapter(
             binding.tvIngredientName.text = ingredient.name
             binding.tvIngredientCategory.text = ingredient.category
             binding.tvIngredientQuantity.text = "${ingredient.quantity}개"
-            if (ingredient.amount == 0.0) {
-                binding.tvIngredientQuantity.text = ""
+            if (ingredient.amount == 100.0) {
+                binding.tvIngredientAmount.text = ""
             } else {
-                binding.tvIngredientQuantity.text = "${ingredient.amount}g"
+                binding.tvIngredientAmount.text = "${ingredient.amount}g"
             }
 
             // D-day 계산 및 표시

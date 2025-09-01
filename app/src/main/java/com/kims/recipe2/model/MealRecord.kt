@@ -4,7 +4,7 @@ import com.google.firebase.firestore.ServerTimestamp
 import java.util.Date
 
 data class MealRecord(
-    val id: String = "",
+    var id: String = "",
     val name: String = "",
     val type: String = "", // "아침", "점심", "저녁"
     val calories: Int = 0,

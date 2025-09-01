@@ -49,30 +49,46 @@ class CalendarViewModel : ViewModel() {
             }
     }
 
+    private var mealRecordsListener: com.google.firebase.firestore.ListenerRegistration? = null
+
     fun fetchMealRecordsForDate(date: LocalDate) {
         if (userId == null) {
             Log.e("CalendarViewModel", "User ID is null. Cannot fetch meal records.")
             return
         }
 
-        // LocalDate를 Date 객체로 변환
+        // 기존 리스너가 있다면 제거
+        mealRecordsListener?.remove()
+
         val startOfDay = Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant())
         val endOfDay = Date.from(date.plusDays(1).atStartOfDay(ZoneId.systemDefault()).minusNanos(1).toInstant())
 
-        db.collection("users").document(userId).collection("mealRecords")
+        // ✨ get() 대신 addSnapshotListener 사용
+        mealRecordsListener = db.collection("users").document(userId).collection("mealRecords")
             .whereGreaterThanOrEqualTo("date", startOfDay)
             .whereLessThanOrEqualTo("date", endOfDay)
-            .get()
-            .addOnSuccessListener { querySnapshot ->
-                val records = querySnapshot.documents.mapNotNull { document ->
-                    document.toObject(MealRecord::class.java)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    _mealRecords.postValue(emptyList())
+                    Log.e("CalendarViewModel", "Error fetching meal records for $date", error)
+                    return@addSnapshotListener
                 }
+
+                val records = snapshot?.documents?.mapNotNull { document ->
+                    document.toObject(MealRecord::class.java)?.apply {
+                        id = document.id // 문서 ID를 MealRecord 객체에 저장
+                    }
+                } ?: emptyList()
+
                 _mealRecords.postValue(records)
-                Log.d("CalendarViewModel", "Fetched ${records.size} records for $date")
+                Log.d("CalendarViewModel", "Fetched ${records.size} real-time records for $date")
             }
-            .addOnFailureListener { e ->
-                _mealRecords.postValue(emptyList())
-                Log.e("CalendarViewModel", "Error fetching meal records for $date", e)
-            }
+    }
+
+    // ✨ ViewModel이 파괴될 때 리스너를 제거하는 함수
+    override fun onCleared() {
+        super.onCleared()
+        mealRecordsListener?.remove()
+        Log.d("CalendarViewModel", "Meal records listener removed.")
     }
 }
