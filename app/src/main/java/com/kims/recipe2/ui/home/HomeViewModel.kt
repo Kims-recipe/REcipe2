@@ -27,8 +27,9 @@ class HomeViewModel : ViewModel() {
     private val _nutritionList = MutableLiveData<List<NutritionItem>>()
     val nutritionList: LiveData<List<NutritionItem>> = _nutritionList
 
-    private val _deficientList = MutableLiveData<List<NutritionItem>>()
-    val deficientList: LiveData<List<NutritionItem>> = _deficientList
+    // 👇 '부족한 영양소' LiveData는 이제 필요 없으므로 삭제합니다.
+    // private val _deficientList = MutableLiveData<List<NutritionItem>>()
+    // val deficientList: LiveData<List<NutritionItem>> = _deficientList
 
     private val _foods = MutableLiveData<List<Food>>()
     val foods: LiveData<List<Food>> = _foods
@@ -36,7 +37,6 @@ class HomeViewModel : ViewModel() {
     private val _isFoodsLoading = MutableLiveData<Boolean>()
     val isFoodsLoading: LiveData<Boolean> = _isFoodsLoading
 
-    // 👇 [추가] 우선 소비 재료 LiveData
     private val _priorityIngredients = MutableLiveData<List<Ingredient>>()
     val priorityIngredients: LiveData<List<Ingredient>> = _priorityIngredients
 
@@ -47,7 +47,7 @@ class HomeViewModel : ViewModel() {
         loadTodayDate()
         loadFoods()
         fetchInitialData()
-        fetchPriorityIngredients() // 👇 [추가] 우선 소비 재료 로딩 함수 호출
+        fetchPriorityIngredients()
     }
 
     private fun loadTodayDate() {
@@ -55,7 +55,6 @@ class HomeViewModel : ViewModel() {
         _todayDate.value = sdf.format(Date())
     }
 
-    // 👇 [추가] 우선 소비 재료를 가져오는 함수
     private fun fetchPriorityIngredients() {
         if (userId == null) return
 
@@ -66,19 +65,16 @@ class HomeViewModel : ViewModel() {
                     return@addSnapshotListener
                 }
                 val ingredients = snapshot?.toObjects(Ingredient::class.java) ?: emptyList()
-
-                // 유통기한과 남은 양을 기준으로 정렬
                 val sortedList = ingredients.sortedWith(
                     compareBy(
-                        { DateUtil.calculateDDay(it.expirationDate) ?: Long.MAX_VALUE }, // D-day 오름차순
-                        { it.quantity } // 남은 양 오름차순
+                        { it.expirationDate == null },
+                        { DateUtil.calculateDDay(it.expirationDate) },
+                        { it.quantity }
                     )
-                ).take(5) // 상위 5개만 선택
-
+                ).take(5)
                 _priorityIngredients.value = sortedList
             }
     }
-
 
     private fun fetchInitialData() {
         if (userId == null) return
@@ -86,10 +82,7 @@ class HomeViewModel : ViewModel() {
         db.collection("users").document(userId)
             .collection("userInfo").document("profile")
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("HomeViewModel", "사용자 정보 로딩 실패", error)
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
                 userInfo = snapshot?.toObject(UserInfo::class.java)
                 updateNutritionUI()
             }
@@ -98,10 +91,7 @@ class HomeViewModel : ViewModel() {
         db.collection("users").document(userId)
             .collection("dailyNutrition").document(todayDateString)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    Log.e("HomeViewModel", "오늘 영양정보 로딩 실패", error)
-                    return@addSnapshotListener
-                }
+                if (error != null) return@addSnapshotListener
                 todaysNutrition = if (snapshot != null && snapshot.exists()) {
                     snapshot.toObject(DailyNutrition::class.java)
                 } else {
@@ -111,24 +101,28 @@ class HomeViewModel : ViewModel() {
             }
     }
 
+    // 👇 [수정] 하나의 리스트를 만들면서 부족 여부를 함께 판단
     private fun updateNutritionUI() {
         val currentUserInfo = userInfo ?: return
         val currentTodaysNutrition = todaysNutrition ?: DailyNutrition()
 
-        _nutritionList.value = listOf(
+        val allNutrients = listOf(
             NutritionItem("칼로리", "🔥", "#ff6b6b", currentTodaysNutrition.calories.toFloat(), currentUserInfo.goalCalories.toFloat(), "kcal"),
             NutritionItem("탄수화물", "🌾", "#45b7d1", currentTodaysNutrition.carbs.toFloat(), currentUserInfo.goalCarbs.toFloat(), "g"),
             NutritionItem("단백질", "💪", "#4ecdc4", currentTodaysNutrition.protein.toFloat(), currentUserInfo.goalProtein.toFloat(), "g"),
-            NutritionItem("지방", "🥑", "#f9ca24", currentTodaysNutrition.fat.toFloat(), currentUserInfo.goalFat.toFloat(), "g")
+            NutritionItem("지방", "🥑", "#f9ca24", currentTodaysNutrition.fat.toFloat(), currentUserInfo.goalFat.toFloat(), "g"),
+            // 추가적인 영양소들 (예시)
+            NutritionItem("나트륨", "🧂", "#A5D6A7", currentTodaysNutrition.sodium.toFloat(), 2000f, "mg"),
+            NutritionItem("칼슘", "🦴", "#B0BEC5", currentTodaysNutrition.calcium.toFloat(), 1000f, "mg"),
+            NutritionItem("철분", "🩸", "#EF9A9A", currentTodaysNutrition.iron.toFloat(), 18f, "mg"),
+            NutritionItem("비타민A", "🥕", "#FFAB91", currentTodaysNutrition.vitaminA.toFloat(), 900f, "μg"), // 비타민 A 추가
+            NutritionItem("비타민C", "🍊", "#FFCC80", currentTodaysNutrition.vitaminC.toFloat(), 100f, "mg")
         )
 
-        val deficientItems = mutableListOf<NutritionItem>()
-        _nutritionList.value?.forEach {
-            if (it.current < it.goal * 0.5) {
-                deficientItems.add(it)
-            }
+        // 각 영양소가 부족한지(목표량의 50% 미만) 판단하여 isDeficient 플래그 설정
+        _nutritionList.value = allNutrients.map {
+            it.copy(isDeficient = it.current < it.goal * 0.5)
         }
-        _deficientList.value = deficientItems
     }
 
     private fun loadFoods() {

@@ -5,4 +5,6 @@
     <color name="carb_color">#45b7d1</color>
     <color name="protein_color">#4ecdc4</color>
     <color name="fat_color">#f9ca24</color>
+    <color name="deficient_color">#FF6347</color>
+    <color name="deficient_background_color">#1AFF6347</color>
 </resources>

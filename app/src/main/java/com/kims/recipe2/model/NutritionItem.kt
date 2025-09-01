@@ -6,5 +6,6 @@ data class NutritionItem(
     val backgroundColorHex: String,
     val current: Float,
     val goal: Float,
-    val unit: String
+    val unit: String,
+    val isDeficient: Boolean = false
 )
