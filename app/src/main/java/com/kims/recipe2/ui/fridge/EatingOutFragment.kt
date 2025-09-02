@@ -100,7 +100,12 @@ class EatingOutFragment : Fragment() {
                 Toast.makeText(requireContext(), "✅ 외식 기록 완료!", Toast.LENGTH_SHORT).show()
                 binding.etMealName.text?.clear()
                 selectedImageUri = null
-                parentFragmentManager.popBackStack()
+                // ✅ MealActivity를 종료하고 MainActivity에 신호를 보냅니다.
+                val resultIntent = Intent().apply {
+                    putExtra("NAVIGATE_TO_CALENDAR", true)
+                }
+                requireActivity().setResult(Activity.RESULT_OK, resultIntent)
+                requireActivity().finish()
             },
             onFailure = { e ->
                 Toast.makeText(requireContext(), "❌ 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()

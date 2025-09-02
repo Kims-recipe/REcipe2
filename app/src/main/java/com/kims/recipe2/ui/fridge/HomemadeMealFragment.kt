@@ -217,7 +217,12 @@ class HomemadeMealFragment : Fragment() {
                 Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
                 selectedIngredients.clear()
                 selectedIngredientAdapter.submitList(emptyList())
-                parentFragmentManager.popBackStack()
+                // ✅ MealActivity를 종료하고 MainActivity에 신호를 보냅니다.
+                val resultIntent = Intent().apply {
+                    putExtra("NAVIGATE_TO_CALENDAR", true)
+                }
+                requireActivity().setResult(Activity.RESULT_OK, resultIntent)
+                requireActivity().finish()
             },
             onFailure = { e ->
                 Toast.makeText(requireContext(), "❌ 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show()

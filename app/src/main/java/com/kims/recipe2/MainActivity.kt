@@ -1,9 +1,12 @@
 package com.kims.recipe2
 
+import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.kims.recipe2.databinding.ActivityMainBinding
@@ -11,6 +14,21 @@ import com.kims.recipe2.databinding.ActivityMainBinding
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val navController: NavController by lazy {
+        (supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment).navController
+    }
+
+    // ActivityResultLauncher 등록
+    private val mealActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val navigateToCalendar =
+                result.data?.getBooleanExtra("NAVIGATE_TO_CALENDAR", false) ?: false
+            if (navigateToCalendar) {
+                // mobile_navigation.xml 파일에 정의된 ID를 사용합니다.
+                navController.navigate(R.id.navigation_calendar)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
