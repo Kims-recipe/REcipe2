@@ -20,33 +20,36 @@ class NutritionAdapter : ListAdapter<NutritionItem, NutritionAdapter.NutritionVi
         fun bind(item: NutritionItem) {
             binding.tvIcon.text = item.icon
             binding.tvName.text = item.name
-            // 소수점 없이 정수로 표시하도록 수정
             binding.tvAmount.text = "${item.current.toInt()} / ${item.goal.toInt()} ${item.unit}"
 
-            // 👇 [수정] isDeficient 값에 따라 itemColor를 한 번만 선언합니다.
-            val itemColor = if (item.isDeficient) {
-                ContextCompat.getColor(binding.root.context, R.color.deficient_color)
-            } else {
-                Color.parseColor(item.backgroundColorHex)
-            }
-
-            binding.tvIcon.backgroundTintList = ColorStateList.valueOf(itemColor)
-            binding.progressBar.progressTintList = ColorStateList.valueOf(itemColor)
-
-            // 배경색 설정 (부족할 경우에만 특별한 배경색 적용)
-            if (item.isDeficient) {
-                val backgroundColor = ContextCompat.getColor(binding.root.context, R.color.deficient_background_color)
-                binding.root.setBackgroundColor(backgroundColor)
-            } else {
-                binding.root.setBackgroundColor(Color.TRANSPARENT) // 기본 배경색
-            }
-
+            // 1. 퍼센트 계산
             val progress = if (item.goal > 0) {
                 (item.current / item.goal * 100).toInt()
             } else {
                 0
             }
-            binding.progressBar.progress = progress.coerceAtMost(100)
+
+            // 2. 퍼센트 값에 따라 ProgressBar 색상 결정
+            val progressColor = when {
+                progress < 80 -> ContextCompat.getColor(binding.root.context, R.color.nutrition_deficient) // 부족 (80% 미만)
+                progress > 120 -> ContextCompat.getColor(binding.root.context, R.color.nutrition_excessive) // 초과 (120% 초과)
+                else -> ContextCompat.getColor(binding.root.context, R.color.nutrition_good) // 정상 (80% ~ 120%)
+            }
+
+            // 3. UI에 적용
+            binding.progressBar.progress = progress.coerceAtMost(200) // 초과 표현을 위해 최대값을 200까지 열어둠
+            binding.progressBar.progressTintList = ColorStateList.valueOf(progressColor)
+            binding.tvProgressPercentage.text = "$progress%"
+
+            // 아이콘 배경색은 기존 로직 유지 (영양소 고유 색상)
+            binding.tvIcon.backgroundTintList = ColorStateList.valueOf(Color.parseColor(item.backgroundColorHex))
+
+            // 부족/초과 상태에 따라 배경 하이라이트 (선택 사항)
+            if (progress < 80 || progress > 120) {
+                binding.root.setBackgroundColor(ContextCompat.getColor(binding.root.context, R.color.deficient_background_color))
+            } else {
+                binding.root.setBackgroundColor(Color.TRANSPARENT)
+            }
         }
     }
 
