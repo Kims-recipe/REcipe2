@@ -30,7 +30,7 @@ class NutritionAdapter : ListAdapter<NutritionItem, NutritionAdapter.NutritionVi
             } else {
                 0
             }
-            val percentageText = "${progress.coerceAtMost(100)}%"
+            val percentageText = "${progress}%"
             binding.tvPercentage.text = percentageText
 
             // 퍼센트에 따른 색상 변경
