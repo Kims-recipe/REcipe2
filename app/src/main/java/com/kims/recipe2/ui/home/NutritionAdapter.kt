@@ -1,9 +1,12 @@
 package com.kims.recipe2.ui.home
 
+import android.animation.ValueAnimator
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -25,19 +28,35 @@ class NutritionAdapter : ListAdapter<NutritionItem, NutritionAdapter.NutritionVi
             binding.tvName.text = item.name
             binding.tvAmount.text = "${item.current} / ${item.goal} ${item.unit}"
 
-            // 2. 아이콘 배경색과 ProgressBar 색상을 데이터에 맞게 동적으로 변경합니다.
-            val itemColor = Color.parseColor(item.backgroundColorHex)
-            binding.tvIcon.backgroundTintList = ColorStateList.valueOf(itemColor)
-            binding.progressBar.progressTintList = ColorStateList.valueOf(itemColor)
-
-            // 3. 목표량 대비 현재 섭취량의 비율(%)을 계산하여 ProgressBar에 적용합니다.
+            // 섭취량의 퍼센트 계산
             val progress = if (item.goal > 0) {
                 (item.current / item.goal * 100).toInt()
             } else {
                 0
             }
-            // progress 값은 100을 넘지 않도록 합니다.
-            binding.progressBar.progress = progress.coerceAtMost(100)
+            val percentageText = "${progress.coerceAtMost(100)}%"
+            binding.tvPercentage.text = percentageText
+
+            // 퍼센트에 따른 색상 변경
+            if (progress >= 100) {
+                binding.tvPercentage.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.holo_red_light))
+            } else {
+                binding.tvPercentage.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.holo_blue_light))
+            }
+
+            // 2. 아이콘 배경색과 ProgressBar 색상을 데이터에 맞게 동적으로 변경합니다.
+            val itemColor = Color.parseColor(item.backgroundColorHex)
+            binding.tvIcon.backgroundTintList = ColorStateList.valueOf(itemColor)
+            binding.progressBar.progressTintList = ColorStateList.valueOf(itemColor)
+
+            // 현재 진행 상태에서 목표 진행 상태까지 애니메이트
+            val animator = ValueAnimator.ofInt(0, progress.coerceAtMost(100))
+            animator.duration = 500L
+            animator.addUpdateListener { animation ->
+                val animatedProgress = animation.animatedValue as Int
+                binding.progressBar.progress = animatedProgress
+            }
+            animator.start()
         }
     }
 

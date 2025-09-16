@@ -9,10 +9,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.kims.recipe2.model.DailyNutrition
 import com.kims.recipe2.model.Food
 import com.kims.recipe2.model.Ingredient
+import com.kims.recipe2.model.MealRecord
 import com.kims.recipe2.model.NutritionItem
 import com.kims.recipe2.model.UserInfo
 import com.kims.recipe2.util.DateUtil
 import java.text.SimpleDateFormat
+import java.time.ZoneId
 import java.util.Date
 import java.util.Locale
 
@@ -40,6 +42,10 @@ class HomeViewModel : ViewModel() {
     private val _priorityIngredients = MutableLiveData<List<Ingredient>>()
     val priorityIngredients: LiveData<List<Ingredient>> = _priorityIngredients
 
+    // 홈 화면 식단기록
+    private val _todayMealRecords = MutableLiveData<List<MealRecord>>()
+    val todayMealRecords: LiveData<List<MealRecord>> = _todayMealRecords
+
     private var userInfo: UserInfo? = null
     private var todaysNutrition: DailyNutrition? = null
 
@@ -48,12 +54,35 @@ class HomeViewModel : ViewModel() {
         loadFoods()
         fetchInitialData()
         fetchPriorityIngredients() // 👇 [추가] 우선 소비 재료 로딩 함수 호출
+        fetchTodayMealRecords() // 오늘의 식단 기록을 불러오는 함수 호출
     }
 
     private fun loadTodayDate() {
         val sdf = SimpleDateFormat("yyyy년 M월 d일 (E)", Locale.KOREAN)
         _todayDate.value = sdf.format(Date())
     }
+
+    // 오늘의 식단 기록을 실시간으로 가져오는 함수
+    private fun fetchTodayMealRecords() {
+        if (userId == null) return
+
+        val today = java.time.LocalDate.now()
+        val startOfDay = Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant())
+        val endOfDay = Date.from(today.plusDays(1).atStartOfDay(ZoneId.systemDefault()).minusNanos(1).toInstant())
+
+        db.collection("users").document(userId).collection("mealRecords")
+            .whereGreaterThanOrEqualTo("date", startOfDay)
+            .whereLessThanOrEqualTo("date", endOfDay)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("HomeViewModel", "오늘 식단 기록 로딩 실패", error)
+                    return@addSnapshotListener
+                }
+                val records = snapshot?.toObjects(MealRecord::class.java) ?: emptyList()
+                _todayMealRecords.value = records.sortedBy { it.date }
+            }
+    }
+
 
     // 👇 [추가] 우선 소비 재료를 가져오는 함수
     private fun fetchPriorityIngredients() {

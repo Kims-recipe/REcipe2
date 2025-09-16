@@ -9,6 +9,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kims.recipe2.databinding.FragmentHomeBinding
+import com.kims.recipe2.databinding.ItemMealRecordHomeBinding
+import com.kims.recipe2.model.MealRecord
 import com.kims.recipe2.ui.fridge.IngredientAdapter
 
 class HomeFragment : Fragment() {
@@ -54,10 +56,10 @@ class HomeFragment : Fragment() {
             layoutManager = LinearLayoutManager(context)
             adapter = nutritionAdapter
         }
-        binding.rvDeficientNutrition.apply {
-            layoutManager = LinearLayoutManager(context)
-            adapter = deficientAdapter
-        }
+//        binding.rvDeficientNutrition.apply {
+//            layoutManager = LinearLayoutManager(context)
+//            adapter = deficientAdapter
+//        }
         binding.rvRecipes.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = foodAdapter
@@ -101,6 +103,34 @@ class HomeFragment : Fragment() {
         viewModel.priorityIngredients.observe(viewLifecycleOwner) { ingredients ->
             priorityIngredientAdapter.submitList(ingredients)
         }
+        // 오늘의 식단 LiveData 관찰
+        viewModel.todayMealRecords.observe(viewLifecycleOwner) { meals ->
+            binding.llMealRecords.removeAllViews()
+            if (meals.isEmpty()) {
+                binding.tvNoMealRecords.visibility = View.VISIBLE
+                binding.hsvMealRecords.visibility = View.GONE
+            } else {
+                binding.tvNoMealRecords.visibility = View.GONE
+                binding.hsvMealRecords.visibility = View.VISIBLE
+                meals.forEach { meal ->
+                    val mealView = createMealRecordView(meal)
+                    binding.llMealRecords.addView(mealView)
+                }
+            }
+        }
+    }
+
+    // 식단 기록 뷰를 생성하는 함수
+    private fun createMealRecordView(meal: MealRecord): View {
+        val mealIcons = mapOf("아침" to "🍳", "점심" to "🍜", "저녁" to "🥗", "간식" to "🍰")
+        val viewBinding = ItemMealRecordHomeBinding.inflate(LayoutInflater.from(context))
+
+        viewBinding.tvMealTypeIcon.text = mealIcons[meal.type] ?: "🍴"
+        viewBinding.tvMealName.text = meal.name
+        viewBinding.tvMealType.text = meal.type
+        viewBinding.tvCalories.text = "${meal.calories}kcal"
+
+        return viewBinding.root
     }
 
     override fun onDestroyView() {
