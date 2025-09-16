@@ -5,6 +5,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -31,24 +32,21 @@ class HomeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        // 'deficientAdapter'가 더 이상 필요 없으므로 삭제합니다.
         val nutritionAdapter = NutritionAdapter()
-        val deficientAdapter = NutritionAdapter()
         val foodAdapter = FoodAdapter { clickedFood ->
             Toast.makeText(context, "${clickedFood.name}을(를) 선택했습니다.", Toast.LENGTH_SHORT).show()
         }
-        // 👇 [추가] 우선 소비 재료를 위한 어댑터 생성
         val priorityIngredientAdapter = IngredientAdapter()
 
-        // 👇 setupRecyclerViews 함수에 새 어댑터 전달
-        setupRecyclerViews(nutritionAdapter, deficientAdapter, foodAdapter, priorityIngredientAdapter)
-        // 👇 observeViewModel 함수에 새 어댑터 전달
-        observeViewModel(nutritionAdapter, deficientAdapter, foodAdapter, priorityIngredientAdapter)
+        // 함수 호출 부분을 업데이트합니다.
+        setupRecyclerViews(nutritionAdapter, foodAdapter, priorityIngredientAdapter)
+        observeViewModel(nutritionAdapter, foodAdapter, priorityIngredientAdapter)
     }
 
-    // 👇 setupRecyclerViews 함수 시그니처 변경
+    // 함수의 파라미터에서 'deficientAdapter'를 제거합니다.
     private fun setupRecyclerViews(
         nutritionAdapter: NutritionAdapter,
-        deficientAdapter: NutritionAdapter,
         foodAdapter: FoodAdapter,
         priorityIngredientAdapter: IngredientAdapter
     ) {
@@ -56,25 +54,20 @@ class HomeFragment : Fragment() {
             layoutManager = LinearLayoutManager(context)
             adapter = nutritionAdapter
         }
-//        binding.rvDeficientNutrition.apply {
-//            layoutManager = LinearLayoutManager(context)
-//            adapter = deficientAdapter
-//        }
+        // 'rvDeficientNutrition' 관련 코드를 완전히 삭제합니다.
         binding.rvRecipes.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = foodAdapter
         }
-        // 👇 [추가] 우선 소비 재료 RecyclerView 설정
         binding.rvPriorityIngredients.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = priorityIngredientAdapter
         }
     }
 
-    // 👇 observeViewModel 함수 시그니처 변경
+    // 함수의 파라미터에서 'deficientAdapter'를 제거합니다.
     private fun observeViewModel(
         nutritionAdapter: NutritionAdapter,
-        deficientAdapter: NutritionAdapter,
         foodAdapter: FoodAdapter,
         priorityIngredientAdapter: IngredientAdapter
     ) {
@@ -86,10 +79,7 @@ class HomeFragment : Fragment() {
             nutritionAdapter.submitList(list)
         }
 
-        viewModel.deficientList.observe(viewLifecycleOwner) { list ->
-            deficientAdapter.submitList(list)
-        }
-
+        // 'deficientList'를 관찰하는 코드를 완전히 삭제합니다.
         viewModel.isFoodsLoading.observe(viewLifecycleOwner) { isLoading ->
             binding.recipesProgressBar.visibility = if (isLoading) View.VISIBLE else View.GONE
             binding.rvRecipes.visibility = if (isLoading) View.GONE else View.VISIBLE
@@ -99,9 +89,14 @@ class HomeFragment : Fragment() {
             foodAdapter.submitList(list)
         }
 
-        // 👇 [추가] 우선 소비 재료 LiveData 관찰
         viewModel.priorityIngredients.observe(viewLifecycleOwner) { ingredients ->
-            priorityIngredientAdapter.submitList(ingredients)
+            val hasIngredients = ingredients.isNotEmpty()
+            binding.rvPriorityIngredients.isVisible = hasIngredients
+            binding.tvNoPriorityIngredients.isVisible = !hasIngredients
+
+            if (hasIngredients) {
+                priorityIngredientAdapter.submitList(ingredients)
+            }
         }
         // 오늘의 식단 LiveData 관찰
         viewModel.todayMealRecords.observe(viewLifecycleOwner) { meals ->
