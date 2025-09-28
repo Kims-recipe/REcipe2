@@ -7,16 +7,9 @@ import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.kims.recipe2.model.DailyNutrition
-import com.kims.recipe2.model.MyPageStat
-import com.kims.recipe2.model.NutritionItem
-import com.kims.recipe2.model.UserInfo
+import com.kims.recipe2.model.*
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-
-enum class TimePeriod { DAILY, WEEKLY, MONTHLY }
+import java.util.*
 
 class MyPageViewModel : ViewModel() {
 
@@ -41,30 +34,41 @@ class MyPageViewModel : ViewModel() {
     private val _userInfo = MutableLiveData<UserInfo>()
     val userInfo: LiveData<UserInfo> = _userInfo
 
+    private val _userRecipes = MutableLiveData<List<UserRecipe>>()
+    val userRecipes: LiveData<List<UserRecipe>> = _userRecipes
+
     init {
         fetchUserInfo()
-        loadStaticData() // 일부 정적 데이터는 그대로 유지
+        fetchUserRecipes()
+        loadStaticData()
         loadNutritionDataFor(TimePeriod.DAILY, "칼로리")
+    }
+
+    private fun fetchUserRecipes() {
+        if (userId == null) return
+        db.collection("users").document(userId).collection("recipes")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                _userRecipes.value = snapshot?.map { doc ->
+                    doc.toObject(UserRecipe::class.java).apply { id = doc.id }
+                } ?: emptyList()
+            }
     }
 
     private fun fetchUserInfo() {
         if (userId == null) return
 
-        // 사용자 목표 정보 가져오기
         db.collection("users").document(userId)
             .collection("userInfo").document("profile")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) return@addSnapshotListener
-                val fetchedUserInfo = snapshot?.toObject(UserInfo::class.java)
-                if (fetchedUserInfo != null) {
+                snapshot?.toObject(UserInfo::class.java)?.let { fetchedUserInfo ->
                     _userInfo.value = fetchedUserInfo
-                    // 👇 사용자 정보가 로드되면, 오늘 영양정보도 함께 로드하여 주간 목표 UI 업데이트
                     fetchTodaysNutritionForWeeklyProgress(fetchedUserInfo)
                 }
             }
     }
 
-    // 👇 [추가] 주간 목표 UI를 업데이트하기 위해 오늘의 영양 정보를 가져오는 함수
     private fun fetchTodaysNutritionForWeeklyProgress(userInfo: UserInfo) {
         if (userId == null) return
         val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
@@ -75,10 +79,9 @@ class MyPageViewModel : ViewModel() {
                 val todaysNutrition = if (snapshot != null && snapshot.exists()) {
                     snapshot.toObject(DailyNutrition::class.java)
                 } else {
-                    DailyNutrition() // 데이터 없으면 0
+                    DailyNutrition()
                 }
 
-                // 👇 실제 데이터로 주간 목표 리스트 업데이트
                 _weeklyProgress.value = listOf(
                     NutritionItem("칼로리", "🔥", "#ff6b6b", todaysNutrition?.calories?.toFloat() ?: 0f, userInfo.goalCalories.toFloat(), "kcal"),
                     NutritionItem("단백질", "💪", "#4ecdc4", todaysNutrition?.protein?.toFloat() ?: 0f, userInfo.goalProtein.toFloat(), "g"),
@@ -88,7 +91,6 @@ class MyPageViewModel : ViewModel() {
     }
 
     private fun loadStaticData() {
-        // 이 데이터들은 예시이므로 그대로 두거나, 나중에 실제 데이터 기반으로 변경할 수 있습니다.
         _stats.value = listOf(
             MyPageStat("🍜", "이번 주 최다", "김치찌개"),
             MyPageStat("💊", "필요 영양소", "비타민 C")

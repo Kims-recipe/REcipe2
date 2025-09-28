@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F0F4F8">
+    android:background="@color/background_light">
 
 
     <LinearLayout
@@ -40,7 +40,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
             app:cardCornerRadius="16dp"
-            app:cardElevation="0dp">
+            app:cardElevation="2dp">
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -124,7 +124,8 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="4dp">
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/surface_light_blue">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -137,7 +138,7 @@
                     android:text="🎯 영양 섭취 현황"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="?attr/colorOnSurface" />
+                    android:textColor="@color/text_primary" />
 
                 <androidx.recyclerview.widget.RecyclerView
                     android:id="@+id/rv_nutrition_status"
@@ -156,7 +157,8 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="4dp">
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/surface_warm">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -171,7 +173,7 @@
                     android:text="🗓️ 오늘의 식단"
                     android:textSize="18sp"
                     android:textStyle="bold"
-                    android:textColor="?attr/colorOnSurface" />
+                    android:textColor="@color/text_primary" />
 
                 <FrameLayout
                     android:layout_width="wrap_content"
@@ -212,7 +214,8 @@
             android:layout_marginTop="16dp"
             android:layout_marginEnd="16dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="4dp">
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/surface_mint">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -226,6 +229,7 @@
                     android:text="🏃 우선 소비 식품"
                     android:textSize="18sp"
                     android:textStyle="bold"
+                    android:textColor="@color/text_primary"
                     android:layout_marginBottom="10dp"/>
                 <FrameLayout
                     android:layout_width="match_parent"
@@ -259,7 +263,8 @@
             android:layout_marginEnd="16dp"
             android:layout_marginBottom="16dp"
             app:cardCornerRadius="20dp"
-            app:cardElevation="4dp">
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="@color/surface_lavender">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -271,6 +276,7 @@
                     android:text="🍳 추천 레시피"
                     android:textSize="18sp"
                     android:textStyle="bold"
+                    android:textColor="@color/text_primary"
                     android:layout_marginBottom="10dp"/>
                 <ProgressBar
                     android:id="@+id/recipes_progress_bar"

@@ -27,13 +27,15 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="칼로리"
-            android:textStyle="bold"/>
+            android:textStyle="bold"
+            android:textColor="@color/text_primary"/>
         <TextView
             android:id="@+id/tv_amount"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="1650 / 2000 kcal"
-            android:textSize="12sp"/>
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"/>
     </LinearLayout>
 
     <ProgressBar
@@ -51,6 +53,6 @@
         android:layout_marginStart="8dp"
         android:textStyle="bold"
         android:textSize="14sp"
-        android:textColor="@android:color/holo_blue_light"
+        android:textColor="@color/primary_blue"
         android:text="82%"/>
 </LinearLayout>

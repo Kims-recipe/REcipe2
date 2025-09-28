@@ -1,13 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Basic colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="carb_color">#45b7d1</color>
-    <color name="protein_color">#4ecdc4</color>
-    <color name="fat_color">#f9ca24</color>
-    <color name="deficient_color">#FF6347</color>
-    <color name="deficient_background_color">#1AFF6347</color>
-    <color name="nutrition_good">#4CAF50</color>
-    <color name="nutrition_deficient">#F44336</color>
-    <color name="nutrition_excessive">#FF9800</color>
+
+    <!-- Toss-inspired primary colors -->
+    <color name="primary_blue">#4285F4</color>
+    <color name="primary_blue_dark">#3367D6</color>
+    <color name="primary_blue_light">#E3F2FD</color>
+
+    <!-- Background colors -->
+    <color name="background_light">#F8F9FA</color>
+    <color name="surface_white">#FFFFFF</color>
+    <color name="surface_gray">#F5F5F5</color>
+    <color name="surface_light_blue">#F8FBFF</color>
+    <color name="surface_warm">#FFFBF7</color>
+    <color name="surface_mint">#F7FFFE</color>
+    <color name="surface_lavender">#FAFAFF</color>
+
+    <!-- Text colors -->
+    <color name="text_primary">#1A1A1A</color>
+    <color name="text_secondary">#666666</color>
+    <color name="text_tertiary">#999999</color>
+
+    <!-- Nutrition colors - softer, more modern -->
+    <color name="carb_color">#5DADE2</color>
+    <color name="protein_color">#52C4BA</color>
+    <color name="fat_color">#F7CA18</color>
+
+    <!-- Status colors -->
+    <color name="deficient_color">#E74C3C</color>
+    <color name="deficient_background_color">#FADBD8</color>
+    <color name="nutrition_good">#27AE60</color>
+    <color name="nutrition_deficient">#E74C3C</color>
+    <color name="nutrition_excessive">#F39C12</color>
+
+    <!-- Border and divider colors -->
+    <color name="border_light">#E0E0E0</color>
+    <color name="divider">#F0F0F0</color>
 </resources>

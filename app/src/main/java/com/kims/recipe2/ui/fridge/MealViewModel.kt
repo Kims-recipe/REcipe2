@@ -1,25 +1,64 @@
 package com.kims.recipe2.ui.fridge
 
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
-import com.kims.recipe2.model.DailyNutrition
-import com.kims.recipe2.model.Food
-import com.kims.recipe2.model.Ingredient
-import com.kims.recipe2.model.MealRecord
+import com.google.firebase.firestore.QuerySnapshot
+import com.kims.recipe2.model.*
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.UUID
+import java.util.*
 
 class MealViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-    // 👇 집밥 기록 로직 수정
+    // 👇 [추가] 사용자의 레시피 목록을 담을 LiveData
+    private val _userRecipes = MutableLiveData<List<UserRecipe>>()
+    val userRecipes: LiveData<List<UserRecipe>> = _userRecipes
+
+    // 👇 [추가] 사용자의 모든 레시피를 불러오는 함수
+    fun fetchUserRecipes() {
+        if (userId == null) return
+        db.collection("users").document(userId).collection("recipes")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("MealViewModel", "레시피 로딩 실패", error)
+                    return@addSnapshotListener
+                }
+                val recipes = snapshot?.map { doc ->
+                    doc.toObject(UserRecipe::class.java).apply { id = doc.id }
+                } ?: emptyList()
+                _userRecipes.value = recipes
+            }
+    }
+
+    // 👇 [추가] 새로운 레시피를 저장하는 함수
+    fun saveUserRecipe(recipeName: String, ingredients: List<Ingredient>) {
+        if (userId == null || recipeName.isBlank() || ingredients.isEmpty()) return
+
+        val ingredientMap = ingredients.map {
+            mapOf(
+                "name" to it.name,
+                "quantity" to it.quantity,
+                "unit" to it.unit
+                // 레시피에는 간단한 정보만 저장, 영양소는 재료 원본을 따름
+            )
+        }
+        val newRecipe = UserRecipe(name = recipeName, ingredients = ingredientMap)
+
+        db.collection("users").document(userId).collection("recipes")
+            .add(newRecipe)
+            .addOnSuccessListener { Log.d("MealViewModel", "✅ 새로운 레시피 저장 성공!") }
+            .addOnFailureListener { e -> Log.e("MealViewModel", "❌ 새로운 레시피 저장 실패!", e) }
+    }
+
+
     fun saveMealRecord(
         mealName: String,
         mealType: String,
@@ -38,7 +77,6 @@ class MealViewModel : ViewModel() {
             return
         }
 
-        // 1. 전달받은 재료 리스트에서 직접 영양소 총합 계산 (DB 접근 불필요)
         val totalNutrition = DailyNutrition(
             calories = selectedIngredients.sumOf { it.calories },
             carbs = selectedIngredients.sumOf { it.carbs },
@@ -51,7 +89,6 @@ class MealViewModel : ViewModel() {
             vitaminC = selectedIngredients.sumOf { it.vitaminC }
         )
 
-        // 2. mealRecords에 저장할 데이터 맵 준비
         val ingredientsForMealRecord = selectedIngredients.map {
             mapOf(
                 "id" to it.id, "name" to it.name, "category" to it.category,
@@ -71,7 +108,6 @@ class MealViewModel : ViewModel() {
             "isHomemade" to isHomemade
         )
 
-        // 3. 트랜잭션 실행
         val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
         val dailyNutritionRef = db.collection("users").document(userId)
             .collection("dailyNutrition").document(todayDateString)
@@ -107,7 +143,6 @@ class MealViewModel : ViewModel() {
         }
     }
 
-    // (saveEatingOutRecord 함수는 변경 없이 그대로 유지)
     fun saveEatingOutRecord(
         mealName: String,
         mealType: String,
@@ -192,27 +227,59 @@ class MealViewModel : ViewModel() {
                 onFailure(e)
             }
     }
-    // 👇 식단 기록 삭제 함수 추가
-    fun deleteMealRecord(mealRecord: MealRecord, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
-        val userId = FirebaseAuth.getInstance().currentUser?.uid
+
+    fun deleteMealRecord(
+        mealRecord: MealRecord,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
         if (userId == null) {
             onFailure(IllegalStateException("User ID is null."))
             return
         }
 
-        if (mealRecord.id.isEmpty()) {
-            onFailure(IllegalArgumentException("Meal record ID is empty."))
-            return
-        }
+        // MealRecord의 영양정보를 일일 영양정보에서 차감
+        val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        val dailyNutritionRef = db.collection("users").document(userId)
+            .collection("dailyNutrition").document(todayDateString)
 
-        db.collection("users").document(userId).collection("mealRecords").document(mealRecord.id)
-            .delete()
-            .addOnSuccessListener {
-                Log.d("MealViewModel", "✅ 식단 기록 삭제 성공: ${mealRecord.name}")
-                onSuccess()
+        // MealRecord 문서 삭제
+        db.collection("users").document(userId)
+            .collection("mealRecords")
+            .whereEqualTo("id", mealRecord.id)
+            .get()
+            .addOnSuccessListener { documents ->
+                if (documents.isEmpty) {
+                    onFailure(IllegalStateException("MealRecord not found."))
+                    return@addOnSuccessListener
+                }
+
+                val mealRecordDoc = documents.documents[0]
+
+                db.runTransaction { transaction ->
+                    // 일일 영양정보에서 차감
+                    val dailySnapshot = transaction.get(dailyNutritionRef)
+                    if (dailySnapshot.exists()) {
+                        val updates = hashMapOf<String, Any>(
+                            "calories" to FieldValue.increment(-mealRecord.calories.toDouble()),
+                            "protein" to FieldValue.increment(-mealRecord.protein.toDouble())
+                        )
+                        transaction.update(dailyNutritionRef, updates)
+                    }
+
+                    // MealRecord 삭제
+                    transaction.delete(mealRecordDoc.reference)
+                    null
+                }.addOnSuccessListener {
+                    Log.d("MealViewModel", "✅ 식단 기록 삭제 성공!")
+                    onSuccess()
+                }.addOnFailureListener { e ->
+                    Log.e("MealViewModel", "❌ 식단 기록 삭제 실패!", e)
+                    onFailure(e)
+                }
             }
             .addOnFailureListener { e ->
-                Log.e("MealViewModel", "❌ 식단 기록 삭제 실패: ${mealRecord.name}", e)
+                Log.e("MealViewModel", "❌ MealRecord 검색 실패!", e)
                 onFailure(e)
             }
     }

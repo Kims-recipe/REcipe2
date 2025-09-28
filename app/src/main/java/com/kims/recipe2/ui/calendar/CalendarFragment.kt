@@ -44,10 +44,10 @@ class CalendarFragment : Fragment() {
     private val monthTitleFormatter = DateTimeFormatter.ofPattern("MMMM yyyy")
 
     private val mealAdapter = MealRecordAdapter(
-        onShareClick = { meal ->
+        onShareClick = { meal: MealRecord ->
             Snackbar.make(binding.root, "${meal.name} 공유 기능 구현", Snackbar.LENGTH_SHORT).show()
         },
-        onItemClick = { meal ->
+        onItemClick = { meal: MealRecord ->
             // ✨ 아이템 클릭 시 상세 다이얼로그 띄우기
             showMealDetailDialog(meal)
         }

@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -20,13 +21,15 @@ import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
-import com.google.android.material.tabs.TabLayout
 import com.google.firebase.auth.FirebaseAuth
+import com.google.android.material.tabs.TabLayout
 import com.kims.recipe2.R
+import com.kims.recipe2.model.TimePeriod
 import com.kims.recipe2.databinding.FragmentMypageBinding
 import com.kims.recipe2.databinding.ItemMypageStatBinding
 import com.kims.recipe2.ui.auth.LoginActivity
 import com.kims.recipe2.ui.home.NutritionAdapter
+import com.kims.recipe2.ui.mypage.UserRecipeAdapter
 import kotlin.math.max
 
 class MyPageFragment : Fragment() {
@@ -135,6 +138,11 @@ class MyPageFragment : Fragment() {
             binding.tvUserGoalInfo.text = "목표 칼로리: ${userInfo.goalCalories.toInt()}kcal"
             requestDataUpdate()
         }
+
+        // [추가] 사용자 레시피 목록 관찰
+        viewModel.userRecipes.observe(viewLifecycleOwner) { recipes ->
+            (binding.rvUserRecipes.adapter as? UserRecipeAdapter)?.submitList(recipes)
+        }
     }
 
     private fun updateLineChartData(data: Map<String, Float>) {
@@ -152,7 +160,6 @@ class MyPageFragment : Fragment() {
         val dataSet = createLineDataSet(entries, selectedNutrient, ContextCompat.getColor(requireContext(), R.color.protein_color))
         lineChart.data = LineData(dataSet)
 
-        // 목표선(LimitLine) 추가 로직
         val goal = viewModel.userInfo.value?.let {
             when (selectedNutrient) {
                 "칼로리" -> it.goalCalories.toFloat()
@@ -163,9 +170,8 @@ class MyPageFragment : Fragment() {
             }
         }
 
-        // 👇 Y축 최댓값 계산 로직 추가
         val maxDataValue = data.values.maxOrNull() ?: 0f
-        val yAxisMax = max(maxDataValue, goal ?: 0f) * 1.2f // 가장 높은 값에 20% 여유 공간 추가
+        val yAxisMax = max(maxDataValue, goal ?: 0f) * 1.2f
 
         if (goal != null) {
             val limitLine = LimitLine(goal, "목표").apply {
@@ -180,17 +186,14 @@ class MyPageFragment : Fragment() {
             lineChart.axisLeft.addLimitLine(limitLine)
         }
 
-        // 👇 계산된 Y축 최댓값을 configureChartAppearance 함수로 전달
         configureChartAppearance(lineChart, labels, yAxisMax)
         lineChart.invalidate()
     }
 
-    // 👇 configureChartAppearance 함수 시그니처 변경 (yAxisMax 파라미터 추가)
     private fun configureChartAppearance(chart: LineChart, xLabels: List<String>, yAxisMax: Float) {
         chart.description.isEnabled = false
         chart.legend.isEnabled = true
 
-        // 👇 Y축 최소/최대값 설정
         chart.axisLeft.axisMinimum = 0f
         chart.axisLeft.axisMaximum = yAxisMax
 
@@ -211,6 +214,13 @@ class MyPageFragment : Fragment() {
     private fun setupRecyclerViews() {
         binding.rvWeeklyGoals.layoutManager = LinearLayoutManager(context)
         binding.rvWeeklyGoals.adapter = NutritionAdapter()
+
+        // [추가] 사용자 레시피 RecyclerView 설정
+        binding.rvUserRecipes.layoutManager = LinearLayoutManager(context)
+        binding.rvUserRecipes.adapter = UserRecipeAdapter { recipe ->
+            val ingredientsText = recipe.ingredients.joinToString(", ") { it["name"].toString() }
+            Toast.makeText(context, "재료: $ingredientsText", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setupLogoutButton() {
