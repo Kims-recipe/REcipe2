@@ -141,6 +141,35 @@ class IngredientListViewModel : ViewModel() {
                 Log.e("IngredientListViewModel", "❌ 재료 영양정보 검색 실패!", e)
             }
     }
+
+    fun updateIngredient(ingredient: Ingredient) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("IngredientListViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 수정할 수 없습니다.")
+            return
+        }
+
+        // Firestore에 저장할 Map 객체 생성
+        val ingredientMap = mapOf(
+            "name" to ingredient.name,
+            "category" to ingredient.category,
+            "location" to ingredient.location,
+            "quantity" to ingredient.quantity,
+            "amount" to ingredient.amount,
+            "unit" to ingredient.unit,
+            "expirationDate" to ingredient.expirationDate
+            // 영양 정보는 추가 시에만 계산되므로 여기서는 업데이트하지 않음
+        )
+
+        db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+            .update(ingredientMap)
+            .addOnSuccessListener {
+                Log.d("IngredientListViewModel", "✅ 재료 업데이트 성공: ${ingredient.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("IngredientListViewModel", "❌ 재료 업데이트 실패: ${ingredient.name}", e)
+            }
+    }
+
     fun deleteIngredient(ingredient: Ingredient) {
         if (userId == null || ingredient.id.isBlank()) {
             Log.e("IngredientListViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 삭제할 수 없습니다.")

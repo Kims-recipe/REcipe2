@@ -2,6 +2,7 @@ package com.kims.recipe2.ui.fridge
 
 import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
@@ -10,6 +11,12 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObjects
 import com.kims.recipe2.model.FridgeCategory
 import com.kims.recipe2.model.Ingredient // 새로 만들 데이터 모델
+
+data class IngredientUIState(
+    val displayList: List<Ingredient> = emptyList(),
+    val isExpanded: Boolean = false,
+    val shouldShowButton: Boolean = false
+)
 
 class FridgeViewModel : ViewModel() {
 
@@ -24,9 +31,19 @@ class FridgeViewModel : ViewModel() {
     private val _ingredients = MutableLiveData<List<Ingredient>>()
     val ingredients: LiveData<List<Ingredient>> = _ingredients
 
+    // ▼▼▼ [추가] UI 상태 관리 로직 ▼▼▼
+    private val _isIngredientsExpanded = MutableLiveData(false)
+
+    private val _ingredientUIState = MediatorLiveData<IngredientUIState>()
+    val ingredientUIState: LiveData<IngredientUIState> = _ingredientUIState
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
+
     init {
         loadCategories()
         fetchIngredients() // ViewModel 생성 시 재료 목록을 가져옵니다.
+        // MediatorLiveData에 소스 연결
+        _ingredientUIState.addSource(_ingredients) { updateIngredientState() }
+        _ingredientUIState.addSource(_isIngredientsExpanded) { updateIngredientState() }
     }
 
     private fun loadCategories() {
@@ -40,6 +57,34 @@ class FridgeViewModel : ViewModel() {
             FridgeCategory("가공식품", "햄, 소시지...", "🥓", "#fd79a8")
         )
     }
+    // ▼▼▼ [추가] '더보기/접기' 상태를 변경하는 함수 ▼▼▼
+    fun toggleIngredientsExpansion() {
+        _isIngredientsExpanded.value = !(_isIngredientsExpanded.value ?: false)
+    }
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
+
+    // ▼▼▼ [추가] UI 상태를 계산하고 발행하는 함수 ▼▼▼
+    private fun updateIngredientState() {
+        val fullList = _ingredients.value ?: emptyList()
+        val isExpanded = _isIngredientsExpanded.value ?: false
+
+        // 재료가 5개 초과일 때만 '더보기/접기' 버튼을 표시
+        val shouldShowButton = fullList.size > 5
+
+        // 확장 상태나 버튼이 필요 없는 경우 전체 목록, 그 외엔 5개만 표시
+        val displayList = if (isExpanded || !shouldShowButton) {
+            fullList
+        } else {
+            fullList.take(5)
+        }
+
+        _ingredientUIState.value = IngredientUIState(
+            displayList = displayList,
+            isExpanded = isExpanded,
+            shouldShowButton = shouldShowButton
+        )
+    }
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
 
     // 3. Firestore에서 재료 목록을 실시간으로 가져오는 함수
     private fun fetchIngredients() {

@@ -48,11 +48,12 @@
 
     <TextView
         android:id="@+id/tv_percentage"
-        android:layout_width="wrap_content"
+        android:layout_width="32dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:textStyle="bold"
         android:textSize="14sp"
+        android:textAlignment="center"
         android:textColor="@color/primary_blue"
         android:text="82%"/>
 </LinearLayout>

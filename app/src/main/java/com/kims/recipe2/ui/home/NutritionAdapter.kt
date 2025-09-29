@@ -34,10 +34,10 @@ class NutritionAdapter : ListAdapter<NutritionItem, NutritionAdapter.NutritionVi
             binding.tvPercentage.text = percentageText
 
             // 퍼센트에 따른 색상 변경
-            if (progress >= 100) {
-                binding.tvPercentage.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.holo_red_light))
-            } else {
+            if (progress <= 125 && progress >= 75){
                 binding.tvPercentage.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.holo_blue_light))
+            } else {
+                binding.tvPercentage.setTextColor(ContextCompat.getColor(itemView.context, android.R.color.holo_red_light))
             }
 
             // 2. 아이콘 배경색과 ProgressBar 색상을 데이터에 맞게 동적으로 변경합니다.

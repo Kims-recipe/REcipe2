@@ -1,64 +1,95 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
-    android:padding="16dp">
+    android:layout_margin="8dp"
+    app:cardCornerRadius="12dp">
 
-    <TextView
-        android:id="@+id/tv_ingredient_name"
-        android:layout_width="0dp"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        tools:text="돼지고기" />
+        android:padding="8dp">
 
-    <TextView
-        android:id="@+id/tv_ingredient_category"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="@drawable/item_background"
-        android:backgroundTint="#E0E0E0"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:textSize="12sp"
-        tools:text="육류" />
+        <TextView
+            android:id="@+id/tv_ingredient_name"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="16dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/black"
+            app:layout_constraintEnd_toStartOf="@+id/tv_ingredient_dday"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:text="돼지고기 삼겹살" />
 
-    <TextView
-        android:id="@+id/tv_ingredient_quantity"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textSize="12sp"
-        tools:text="1개" />
+        <TextView
+            android:id="@+id/tv_ingredient_category"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_category_chip"
+            android:paddingStart="10dp"
+            android:paddingTop="4dp"
+            android:paddingEnd="10dp"
+            android:paddingBottom="4dp"
+            android:textSize="12sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tv_ingredient_name"
+            tools:text="육류" />
 
-    <TextView
-        android:id="@+id/tv_ingredient_amount"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textSize="12sp"
-        tools:text="" />
+        <TextView
+            android:id="@+id/tv_ingredient_quantity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="13sp"
+            app:layout_constraintBottom_toBottomOf="@+id/tv_ingredient_category"
+            app:layout_constraintStart_toEndOf="@+id/tv_ingredient_category"
+            app:layout_constraintTop_toTopOf="@+id/tv_ingredient_category"
+            tools:text="1개" />
 
-    <TextView
-        android:id="@+id/tv_ingredient_dday"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        android:textColor="@color/design_default_color_error" tools:text="D-7" />
+        <TextView
+            android:id="@+id/tv_ingredient_amount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="2dp"
+            android:textColor="@android:color/darker_gray"
+            android:textSize="13sp"
+            app:layout_constraintBottom_toBottomOf="@+id/tv_ingredient_category"
+            app:layout_constraintStart_toEndOf="@+id/tv_ingredient_category"
+            app:layout_constraintTop_toTopOf="@+id/tv_ingredient_category"
+            tools:text="500g" />
 
-    <Button
-        android:id="@+id/ingredient_delete"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_marginStart="20dp"
-        android:background="@drawable/ic_delete_icon"
-        android:contentDescription="재료 삭제"
-        android:layout_gravity="center_vertical" />
-</LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_ingredient_dday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/design_default_color_error"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/ingredient_delete"
+            app:layout_constraintTop_toTopOf="parent"
+            android:layout_marginEnd="16dp"
+            tools:text="D-3" />
+
+        <ImageButton
+            android:id="@+id/ingredient_delete"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="재료 삭제"
+            android:src="@drawable/ic_delete_icon"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.cardview.widget.CardView>

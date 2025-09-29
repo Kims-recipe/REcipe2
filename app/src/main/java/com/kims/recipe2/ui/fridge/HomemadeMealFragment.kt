@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kims.recipe2.R
+import com.kims.recipe2.databinding.DialogConsumeQuantityBinding // 새로 추가
 import com.kims.recipe2.databinding.FragmentHomemadeMealBinding
 import com.kims.recipe2.model.Ingredient
 
@@ -28,7 +29,8 @@ class HomemadeMealFragment : Fragment() {
     private val fridgeViewModel: FridgeViewModel by viewModels()
     private val mealViewModel: MealViewModel by viewModels()
 
-    private val selectedIngredients = mutableListOf<Ingredient>()
+    // Map을 사용하여 재료와 '소비할 양'을 관리합니다. Key: 재료 ID, Value: 소비할 Ingredient 객체
+    private val selectedIngredientsMap = mutableMapOf<String, Ingredient>()
     private lateinit var selectedIngredientAdapter: IngredientAdapter
 
     private var selectedMealTime: String = "아침"
@@ -72,11 +74,20 @@ class HomemadeMealFragment : Fragment() {
     }
 
     private fun setupRecyclerViews() {
-        selectedIngredientAdapter = IngredientAdapter { ingredient -> showRemoveDialog(ingredient) }
+        // ▼▼▼ [수정] 아이템 클릭 시 수량 조절 다이얼로그 호출 ▼▼▼
+        selectedIngredientAdapter = IngredientAdapter { ingredient ->
+            // 어댑터에서 넘어온 ingredient는 '소비할 양'이 담긴 객체입니다.
+            // 원본 재료 정보를 찾기 위해 fridgeViewModel을 사용합니다.
+            val originalIngredient = fridgeViewModel.ingredients.value?.find { it.id == ingredient.id }
+            if (originalIngredient != null) {
+                showConsumeQuantityDialog(originalIngredient, ingredient)
+            }
+        }
         binding.selectedIngredients.apply {
             layoutManager = LinearLayoutManager(requireContext())
             adapter = selectedIngredientAdapter
         }
+        // ▲▲▲ [수정] 여기까지 ▲▲▲
 
         val categoryAdapter = FridgeCategoryAdapter { category ->
             val ingredients = fridgeViewModel.ingredients.value?.filter { it.category == category.name } ?: emptyList()
@@ -90,6 +101,60 @@ class HomemadeMealFragment : Fragment() {
             categoryAdapter.submitList(it)
         }
     }
+
+    // ▼▼▼ [추가] 수량 조절 다이얼로그를 보여주는 함수 ▼▼▼
+    private fun showConsumeQuantityDialog(originalIngredient: Ingredient, currentConsumed: Ingredient) {
+        val dialogBinding = DialogConsumeQuantityBinding.inflate(LayoutInflater.from(requireContext()))
+        val isByAmount = originalIngredient.amount > 0 // g 단위 재료인지, 개수 단위 재료인지 확인
+
+        // 다이얼로그 제목과 힌트 설정
+        val title: String
+        val currentAmount: Number = if (isByAmount) originalIngredient.amount else originalIngredient.quantity
+        val unit = if (isByAmount) "g" else "개"
+        title = "${originalIngredient.name} (남은 양: $currentAmount$unit)"
+        dialogBinding.tvIngredientNameTitle.text = title
+        dialogBinding.etConsumeQuantity.hint = "사용할 양 ($unit)을 입력하세요"
+
+        // 현재 소비량으로 EditText 초기값 설정
+        val currentConsumedValue = if (isByAmount) currentConsumed.amount else currentConsumed.quantity
+        dialogBinding.etConsumeQuantity.setText(currentConsumedValue.toString())
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("재료 사용량 조절")
+            .setView(dialogBinding.root)
+            .setPositiveButton("확인") { dialog, _ ->
+                val inputText = dialogBinding.etConsumeQuantity.text.toString()
+                val consumeValue = inputText.toIntOrNull()
+
+                if (consumeValue == null || consumeValue <= 0) {
+                    Toast.makeText(requireContext(), "올바른 값을 입력하세요.", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                // 남은 양보다 많이 사용할 수 없도록 체크
+                if ((isByAmount && consumeValue > originalIngredient.amount) || (!isByAmount && consumeValue > originalIngredient.quantity)) {
+                    Toast.makeText(requireContext(), "재고보다 많은 양을 사용할 수 없습니다.", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                // selectedIngredientsMap에 있는 재료 정보 업데이트
+                val updatedIngredient = if (isByAmount) {
+                    currentConsumed.copy(amount = consumeValue, quantity = 0)
+                } else {
+                    currentConsumed.copy(quantity = consumeValue, amount = 0)
+                }
+                selectedIngredientsMap[originalIngredient.id] = updatedIngredient
+                updateSelectedIngredientsList() // 리스트 및 어댑터 갱신
+                dialog.dismiss()
+            }
+            .setNegativeButton("취소", null)
+            .setNeutralButton("목록에서 제거") { _, _ -> // '제거' 버튼 추가
+                selectedIngredientsMap.remove(originalIngredient.id)
+                updateSelectedIngredientsList()
+            }
+            .show()
+    }
+
 
     private fun setupClickListeners() {
         binding.ivMealPreview.setOnClickListener {
@@ -126,41 +191,57 @@ class HomemadeMealFragment : Fragment() {
 
     private fun loadIngredientsFromRecipe(recipeIngredients: List<Map<String, Any>>) {
         val currentFridgeIngredients = fridgeViewModel.ingredients.value ?: emptyList()
-        selectedIngredients.clear()
+        selectedIngredientsMap.clear()
 
         recipeIngredients.forEach { recipeIngredient ->
             val name = recipeIngredient["name"] as? String ?: ""
             val fridgeIngredient = currentFridgeIngredients.find { it.name == name }
             if (fridgeIngredient != null) {
-                selectedIngredients.add(fridgeIngredient)
+                // 레시피의 재료는 기본적으로 전체 수량을 사용하는 것으로 간주
+                selectedIngredientsMap[fridgeIngredient.id] = fridgeIngredient
             } else {
                 Toast.makeText(requireContext(), "'$name' 재료가 냉장고에 없습니다.", Toast.LENGTH_SHORT).show()
             }
         }
-        selectedIngredientAdapter.submitList(selectedIngredients.toList())
+        updateSelectedIngredientsList()
     }
 
     private fun saveMealRecord() {
         val mealName = binding.etMealName.text.toString().trim()
-        if (mealName.isEmpty() || selectedIngredients.isEmpty()) {
+        val ingredientsToConsume = selectedIngredientsMap.values.toList() // Map의 value들로 리스트 생성
+
+        if (mealName.isEmpty() || ingredientsToConsume.isEmpty()) {
             Toast.makeText(requireContext(), "식사 이름과 재료를 입력하세요", Toast.LENGTH_SHORT).show()
             return
         }
 
         if (binding.switchSaveRecipe.isChecked) {
-            mealViewModel.saveUserRecipe(mealName, selectedIngredients.toList())
+            mealViewModel.saveUserRecipe(mealName, ingredientsToConsume)
         }
 
         mealViewModel.saveMealRecord(
-            mealName, selectedMealTime, selectedIngredients.toList(),
+            mealName, selectedMealTime, ingredientsToConsume,
             selectedImageUri?.toString(), true,
             onSuccess = {
                 Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
-                selectedIngredients.forEach { fridgeViewModel.consumeIngredient(it, it.quantity) }
-                selectedIngredients.clear()
-                selectedIngredientAdapter.submitList(emptyList())
+                // ▼▼▼ [수정] 사용자가 입력한 만큼만 재료 소비 ▼▼▼
+                ingredientsToConsume.forEach { consumed ->
+                    val original = fridgeViewModel.ingredients.value?.find { it.id == consumed.id }
+                    if(original != null) {
+                        val consumedAmount = if (consumed.amount > 0) consumed.amount else consumed.quantity
+                        fridgeViewModel.consumeIngredient(original, consumedAmount)
+                    }
+                }
+                selectedIngredientsMap.clear()
+                updateSelectedIngredientsList()
                 binding.etMealName.text.clear()
                 binding.switchSaveRecipe.isChecked = false
+
+                val resultIntent = Intent().apply {
+                    putExtra("NAVIGATE_TO_CALENDAR", true)
+                }
+                requireActivity().setResult(Activity.RESULT_OK, resultIntent)
+                requireActivity().finish() 
             },
             onFailure = { e -> Toast.makeText(requireContext(), "❌ 저장 실패: ${e.message}", Toast.LENGTH_SHORT).show() }
         )
@@ -180,28 +261,26 @@ class HomemadeMealFragment : Fragment() {
             .setView(dialogView)
             .setPositiveButton("선택") { dialog, _ ->
                 val newlySelected = dialogSelectableAdapter.getSelectedItems()
-                newlySelected.forEach { selected ->
-                    selectedIngredients.removeAll { it.name == selected.name }
-                    selectedIngredients.add(selected)
+                // ▼▼▼ [수정] Map을 사용하여 재료 관리 ▼▼▼
+                newlySelected.forEach {
+                    // 새로 추가되는 재료는 기본적으로 전체 수량을 소비하는 것으로 설정
+                    if (!selectedIngredientsMap.containsKey(it.id)) {
+                        selectedIngredientsMap[it.id] = it
+                    }
                 }
-                selectedIngredientAdapter.submitList(selectedIngredients.toList())
+                updateSelectedIngredientsList() // 리스트 및 어댑터 갱신
+                // ▲▲▲ [수정] 여기까지 ▲▲▲
                 dialog.dismiss()
             }
             .setNegativeButton("취소", null)
             .show()
     }
 
-    private fun showRemoveDialog(ingredient: Ingredient) {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("재료 제거")
-            .setMessage("${ingredient.name} 을(를) 선택 목록에서 제거할까요?")
-            .setPositiveButton("제거") { _, _ ->
-                selectedIngredients.remove(ingredient)
-                selectedIngredientAdapter.submitList(selectedIngredients.toList())
-            }
-            .setNegativeButton("취소", null)
-            .show()
+    private fun updateSelectedIngredientsList() {
+        val ingredientList = selectedIngredientsMap.values.toList().sortedBy { it.name }
+        selectedIngredientAdapter.submitList(ingredientList)
     }
+
 
     override fun onDestroyView() {
         super.onDestroyView()

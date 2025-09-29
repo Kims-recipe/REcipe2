@@ -13,22 +13,25 @@ import com.kims.recipe2.databinding.ItemIngredientBinding
 import com.kims.recipe2.util.DateUtil
 
 class IngredientAdapter(
+    private val showDeleteButton: Boolean = true,
     private val onItemClick: ((Ingredient) -> Unit)? = null,
     private val onDeleteClick: ((Ingredient) -> Unit)? = null
 ) : ListAdapter<Ingredient, IngredientAdapter.IngredientViewHolder>(DiffCallback) {
 
     class IngredientViewHolder(
         private val binding: ItemIngredientBinding,
+        private val showDeleteButton: Boolean,
         private val onItemClick: ((Ingredient) -> Unit)?,
         private val onDeleteClick: ((Ingredient) -> Unit)?
     ) : RecyclerView.ViewHolder(binding.root) {
         fun bind(ingredient: Ingredient) {
             binding.tvIngredientName.text = ingredient.name
             binding.tvIngredientCategory.text = ingredient.category
-            binding.tvIngredientQuantity.text = "${ingredient.quantity}개"
-            if (ingredient.amount == 100.0) {
+            if (ingredient.amount == 0) {
                 binding.tvIngredientAmount.text = ""
+                binding.tvIngredientQuantity.text = "${ingredient.quantity}개"
             } else {
+                binding.tvIngredientQuantity.text = ""
                 binding.tvIngredientAmount.text = "${ingredient.amount}g"
             }
 
@@ -62,6 +65,7 @@ class IngredientAdapter(
                 binding.tvIngredientDday.visibility = View.GONE // expirationDate가 null인 경우 숨김
             }
 
+            binding.ingredientDelete.visibility = if (showDeleteButton) View.VISIBLE else View.GONE
 
             binding.root.setOnClickListener {
                 onItemClick?.invoke(ingredient)
@@ -74,7 +78,7 @@ class IngredientAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): IngredientViewHolder {
         val binding = ItemIngredientBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return IngredientViewHolder(binding, onItemClick, onDeleteClick)
+        return IngredientViewHolder(binding,showDeleteButton, onItemClick, onDeleteClick)
     }
 
     override fun onBindViewHolder(holder: IngredientViewHolder, position: Int) {
