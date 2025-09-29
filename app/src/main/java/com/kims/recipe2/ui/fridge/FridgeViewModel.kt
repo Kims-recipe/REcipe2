@@ -146,6 +146,32 @@ class FridgeViewModel : ViewModel() {
             }
     }
 
+    fun updateIngredient(ingredient: Ingredient) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("FridgeViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 수정할 수 없습니다.")
+            return
+        }
+
+        val ingredientMap = mapOf(
+            "name" to ingredient.name,
+            "category" to ingredient.category,
+            "location" to ingredient.location,
+            "quantity" to ingredient.quantity,
+            "amount" to ingredient.amount,
+            "unit" to ingredient.unit,
+            "expirationDate" to ingredient.expirationDate
+        )
+
+        db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+            .update(ingredientMap)
+            .addOnSuccessListener {
+                Log.d("FridgeViewModel", "✅ 재료 업데이트 성공: ${ingredient.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FridgeViewModel", "❌ 재료 업데이트 실패: ${ingredient.name}", e)
+            }
+    }
+
     fun deleteIngredient(ingredient: Ingredient) {
         if (userId == null || ingredient.id.isBlank()) {
             Log.e("FridgeViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 삭제할 수 없습니다.")
