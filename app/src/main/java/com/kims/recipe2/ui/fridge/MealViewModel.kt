@@ -220,10 +220,14 @@ class MealViewModel : ViewModel() {
                     } else {
                         val newDailyData = DailyNutrition(
                             date = Date(),
-                            calories = food?.calories ?: 0.0, carbs = food?.carbs ?: 0.0,
-                            protein = food?.protein ?: 0.0, fat = food?.fat ?: 0.0,
-                            sodium = food?.sodium ?: 0.0, calcium = food?.calcium ?: 0.0,
-                            iron = food?.iron ?: 0.0, vitaminA = food?.vitaminA ?: 0.0,
+                            calories = food?.calories ?: 0.0,
+                            carbs = food?.carbs ?: 0.0,
+                            protein = food?.protein ?: 0.0,
+                            fat = food?.fat ?: 0.0,
+                            sodium = food?.sodium ?: 0.0,
+                            calcium = food?.calcium ?: 0.0,
+                            iron = food?.iron ?: 0.0,
+                            vitaminA = food?.vitaminA ?: 0.0,
                             vitaminC = food?.vitaminC ?: 0.0
                         )
                         transaction.set(dailyNutritionRef, newDailyData)
@@ -286,11 +290,9 @@ class MealViewModel : ViewModel() {
                     )
                     transaction.update(dailyNutritionRef, updates)
                 } else {
-                    // 외식인 경우, Food DB를 다시 조회해서 모든 영양소 차감 (구현의 복잡성을 고려하여 단순화 가능)
-                    // 현재는 칼로리/단백질만 차감
                     val updates = hashMapOf<String, Any>(
-                        "calories" to FieldValue.increment(-mealRecord.calories.toDouble()),
-                        "protein" to FieldValue.increment(-mealRecord.protein.toDouble()),
+                        "calories" to FieldValue.increment(-mealRecord.calories),
+                        "protein" to FieldValue.increment(-mealRecord.protein),
                         "fat" to FieldValue.increment(-mealRecord.fat),
                         "sodium" to FieldValue.increment(-mealRecord.sodium),
                         "calcium" to FieldValue.increment(-mealRecord.calcium),
