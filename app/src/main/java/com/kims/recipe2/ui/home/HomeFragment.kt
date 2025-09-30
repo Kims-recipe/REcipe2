@@ -202,7 +202,7 @@ class HomeFragment : Fragment() {
                 phrases.add("단백질을 충분히 섭취했네요! 멋져요. 👍")
             }
             else {
-                phrases.add("단백질 섭취가 부족해요. 닭가슴살이나 계란은 어떠세요? 🥚" )
+                phrases.add("단백질 섭취가 부족해요!" )
             }
         }
 
@@ -220,7 +220,7 @@ class HomeFragment : Fragment() {
                 phrases.add("지방을 충분히 섭취했네요! 멋져요. 👍")
             }
             else {
-                phrases.add("지방 섭취가 부족해요. 약간의 기름진 음식을 먹어도 좋아요!" )
+                phrases.add("지방 섭취가 부족해요. 기름진 음식을 먹어도 좋아요!" )
             }
         }
 
@@ -253,7 +253,7 @@ class HomeFragment : Fragment() {
                 phrases.add("비타민C을 충분히 섭취했네요! 멋져요. 👍")
             }
             else {
-                phrases.add("단백질 섭취가 부족해요. 닭가슴살이나 계란은 어떠세요? 🥚" )
+                phrases.add("비타민C 섭취가 부족해요" )
             }
         }
 
@@ -262,11 +262,6 @@ class HomeFragment : Fragment() {
                 phrases.add("나트륨 섭취가 조금 많아요. 물을 충분히 마셔주세요! 💧")
             }
         }
-        // 생성된 문구가 하나뿐이면 기본 문구를 하나 더 추가하여 다양성 확보
-        if (phrases.size <= 1) {
-            phrases.add("신선한 채소와 과일로 비타민을 보충해 보세요. 🥗")
-        }
-
         return phrases
     }
 
