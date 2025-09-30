@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.core.view.isVisible
@@ -30,7 +31,7 @@ class HomeFragment : Fragment() {
     private lateinit var priorityIngredientAdapter: IngredientAdapter
 
     private val handler = Handler(Looper.getMainLooper())
-    private lateinit var updateTextRunnable: Runnable
+    private var updateTextRunnable: Runnable? = null
     private var phraseIndex = 0
     private var currentNutritionItems: List<NutritionItem> = emptyList()
 
@@ -74,19 +75,21 @@ class HomeFragment : Fragment() {
     }
 
     private fun startTextAnimation() {
-        // ▼▼▼ [수정] 함수가 처음 호출될 때 즉시 첫 텍스트를 설정 ▼▼▼
         val initialPhrases = generateDynamicPhrases()
         if (initialPhrases.isNotEmpty()) {
             binding.tvNutritionSummary.text = initialPhrases.first()
         }
-        // ▲▲▲ [수정] 여기까지 ▲▲▲
 
         val fadeIn = AnimationUtils.loadAnimation(context, R.anim.fade_in)
         val fadeOut = AnimationUtils.loadAnimation(context, R.anim.fade_out)
 
-        fadeOut.setAnimationListener(object : android.view.animation.Animation.AnimationListener {
-            override fun onAnimationStart(animation: android.view.animation.Animation?) {}
-            override fun onAnimationEnd(animation: android.view.animation.Animation?) {
+        fadeOut.setAnimationListener(object : Animation.AnimationListener {
+            override fun onAnimationStart(animation: Animation?) {}
+            override fun onAnimationEnd(animation: Animation?) {
+                // ▼▼▼ [수정] 애니메이션 종료 시점에도 binding이 null인지 확인하는 안전장치 추가 ▼▼▼
+                if (_binding == null) return
+                // ▲▲▲ [수정] 여기까지 ▲▲▲
+
                 val dynamicPhrases = generateDynamicPhrases()
                 if (dynamicPhrases.isNotEmpty()) {
                     phraseIndex = (phraseIndex + 1) % dynamicPhrases.size
@@ -94,25 +97,25 @@ class HomeFragment : Fragment() {
                 }
                 binding.tvNutritionSummary.startAnimation(fadeIn)
             }
-            override fun onAnimationRepeat(animation: android.view.animation.Animation?) {}
+            override fun onAnimationRepeat(animation: Animation?) {}
         })
 
         updateTextRunnable = object : Runnable {
             override fun run() {
+                // ▼▼▼ [수정] Runnable 실행 시점에도 binding이 null인지 확인하는 안전장치 추가 ▼▼▼
+                if (_binding == null) return
+                // ▲▲▲ [수정] 여기까지 ▲▲▲
+
                 binding.tvNutritionSummary.startAnimation(fadeOut)
                 handler.postDelayed(this, 5000)
             }
         }
-        // 첫 애니메이션 시작은 5초 뒤
-        handler.postDelayed(updateTextRunnable, 5000)
+        handler.postDelayed(updateTextRunnable!!, 5000)
+    }
 
-        updateTextRunnable = object : Runnable {
-            override fun run() {
-                binding.tvNutritionSummary.startAnimation(fadeOut)
-                handler.postDelayed(this, 5000) // 5초 간격
-            }
-        }
-        handler.postDelayed(updateTextRunnable, 5000)
+    private fun stopTextAnimation() {
+        updateTextRunnable?.let { handler.removeCallbacks(it) }
+        updateTextRunnable = null
     }
 
     private fun setupClickListeners() {
@@ -133,6 +136,12 @@ class HomeFragment : Fragment() {
             if (!isAnimationStarted && state.displayList.isNotEmpty()) {
                 startTextAnimation()
                 isAnimationStarted = true
+            }
+
+            if (_binding != null) {
+                nutritionAdapter.submitList(state.displayList)
+                binding.btnExpandNutrition.isVisible = !state.isExpanded && state.shouldShowButtons
+                binding.btnCollapseNutrition.isVisible = state.isExpanded && state.shouldShowButtons
             }
 
             // 어댑터에 목록 제출
@@ -271,11 +280,21 @@ class HomeFragment : Fragment() {
         return viewBinding.root
     }
 
+    override fun onPause() {
+        super.onPause()
+        stopTextAnimation() // [추가] 화면이 보이지 않게 될 때 애니메이션 중지
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (currentNutritionItems.isNotEmpty()) {
+            startTextAnimation()
+        }
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
-        if (::updateTextRunnable.isInitialized) { // [추가] 초기화 여부 확인
-            handler.removeCallbacks(updateTextRunnable)
-        }
+        stopTextAnimation() // [수정] onDestroyView에서도 호출하여 이중으로 보호
         _binding = null
     }
 }
