@@ -7,8 +7,15 @@ data class MealRecord(
     var id: String = "",
     val name: String = "",
     val type: String = "", // "아침", "점심", "저녁"
-    val calories: Int = 0,
-    val protein: Int = 0,
+    var calories: Double = 0.0,
+    var carbs: Double = 0.0,
+    var protein: Double = 0.0,
+    var fat: Double = 0.0,
+    var calcium: Double = 0.0,
+    var iron: Double = 0.0,
+    var sodium: Double = 0.0,
+    var vitaminA: Double = 0.0,
+    var vitaminC: Double = 0.0,
     @ServerTimestamp
     val date: Date? = null,
     val isPlanned: Boolean = false, // 예정된 식단인지 여부

@@ -36,7 +36,7 @@ class MealRecordAdapter(
 
         fun bind(meal: MealRecord) {
             binding.tvMealName.text = meal.name
-            binding.tvMealInfo.text = "칼로리: ${meal.calories}kcal | 단백질: ${meal.protein}g"
+            binding.tvMealInfo.text = "칼로리: ${meal.calories.toInt()}kcal | 단백질: ${meal.protein}g"
 
             // imageUri가 있으면 사진을 표시하고, 없으면 아이콘을 표시
             if (meal.imageUri != null && meal.imageUri.isNotEmpty()) {

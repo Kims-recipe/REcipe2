@@ -99,14 +99,22 @@ class MealViewModel : ViewModel() {
             "id" to UUID.randomUUID().toString(),
             "name" to mealName,
             "type" to mealType,
-            "calories" to totalNutrition.calories.toInt(),
-            "protein" to totalNutrition.protein.toInt(),
+            "calories" to totalNutrition.calories,
+            "carbs" to totalNutrition.carbs,
+            "protein" to totalNutrition.protein,
+            "fat" to totalNutrition.fat,
+            "calcium" to totalNutrition.calcium,
+            "iron" to totalNutrition.iron,
+            "sodium" to totalNutrition.sodium,
+            "vitaminA" to totalNutrition.vitaminA,
+            "vitaminC" to totalNutrition.vitaminC,
             "date" to FieldValue.serverTimestamp(),
             "isPlanned" to false,
             "ingredients" to ingredientsForMealRecord,
             "imageUri" to imageUri.orEmpty(),
             "isHomemade" to isHomemade
         )
+
 
         val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
         val dailyNutritionRef = db.collection("users").document(userId)
@@ -172,8 +180,16 @@ class MealViewModel : ViewModel() {
                     "id" to UUID.randomUUID().toString(),
                     "name" to mealName,
                     "type" to mealType,
-                    "calories" to (food?.calories?.toInt() ?: 0),
-                    "protein" to (food?.protein?.toInt() ?: 0),
+                    "calories" to (food?.calories ?: 0.0),
+                    "carbs" to (food?.carbs ?: 0.0),
+                    "protein" to (food?.protein ?: 0.0),
+                    "fat" to (food?.fat ?: 0.0),
+                    "calcium" to (food?.calcium ?: 0.0),
+                    "iron" to (food?.iron ?: 0.0),
+                    "sodium" to (food?.sodium ?: 0.0),
+                    "vitaminA" to (food?.vitaminA ?: 0.0),
+                    "vitaminC" to (food?.vitaminC ?: 0.0),
+                    "protein" to (food?.protein ?: 0.0),
                     "date" to FieldValue.serverTimestamp(),
                     "isPlanned" to false,
                     "imageUri" to imageUri.orEmpty(),
@@ -238,49 +254,62 @@ class MealViewModel : ViewModel() {
             return
         }
 
+        // ▼▼▼ [수정된 부분] mealRecord.id를 사용하여 문서 경로를 직접 지정 ▼▼▼
+        if (mealRecord.id.isBlank()) {
+            onFailure(IllegalStateException("MealRecord ID is empty."))
+            return
+        }
+
         // MealRecord의 영양정보를 일일 영양정보에서 차감
         val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
         val dailyNutritionRef = db.collection("users").document(userId)
             .collection("dailyNutrition").document(todayDateString)
+        val mealRecordRef = db.collection("users").document(userId)
+            .collection("mealRecords").document(mealRecord.id) // 문서 ID로 직접 참조
 
-        // MealRecord 문서 삭제
-        db.collection("users").document(userId)
-            .collection("mealRecords")
-            .whereEqualTo("id", mealRecord.id)
-            .get()
-            .addOnSuccessListener { documents ->
-                if (documents.isEmpty) {
-                    onFailure(IllegalStateException("MealRecord not found."))
-                    return@addOnSuccessListener
-                }
-
-                val mealRecordDoc = documents.documents[0]
-
-                db.runTransaction { transaction ->
-                    // 일일 영양정보에서 차감
-                    val dailySnapshot = transaction.get(dailyNutritionRef)
-                    if (dailySnapshot.exists()) {
-                        val updates = hashMapOf<String, Any>(
-                            "calories" to FieldValue.increment(-mealRecord.calories.toDouble()),
-                            "protein" to FieldValue.increment(-mealRecord.protein.toDouble())
-                        )
-                        transaction.update(dailyNutritionRef, updates)
-                    }
-
-                    // MealRecord 삭제
-                    transaction.delete(mealRecordDoc.reference)
-                    null
-                }.addOnSuccessListener {
-                    Log.d("MealViewModel", "✅ 식단 기록 삭제 성공!")
-                    onSuccess()
-                }.addOnFailureListener { e ->
-                    Log.e("MealViewModel", "❌ 식단 기록 삭제 실패!", e)
-                    onFailure(e)
+        db.runTransaction { transaction ->
+            // 일일 영양정보에서 차감
+            val dailySnapshot = transaction.get(dailyNutritionRef)
+            if (dailySnapshot.exists()) {
+                // isHomemade 필드로 집밥/외식 구분하여 차감 로직 실행
+                if (mealRecord.isHomemade) {
+                    val updates = hashMapOf<String, Any>(
+                        "calories" to FieldValue.increment(-mealRecord.calories.toDouble()),
+                        "carbs" to FieldValue.increment(-mealRecord.carbs.toDouble()),
+                        "protein" to FieldValue.increment(-mealRecord.protein.toDouble()),
+                        "fat" to FieldValue.increment(-mealRecord.fat),
+                        "sodium" to FieldValue.increment(-mealRecord.sodium),
+                        "calcium" to FieldValue.increment(-mealRecord.calcium),
+                        "iron" to FieldValue.increment(-mealRecord.iron),
+                        "vitaminA" to FieldValue.increment(-mealRecord.vitaminA),
+                        "vitaminC" to FieldValue.increment(-mealRecord.vitaminC)
+                    )
+                    transaction.update(dailyNutritionRef, updates)
+                } else {
+                    // 외식인 경우, Food DB를 다시 조회해서 모든 영양소 차감 (구현의 복잡성을 고려하여 단순화 가능)
+                    // 현재는 칼로리/단백질만 차감
+                    val updates = hashMapOf<String, Any>(
+                        "calories" to FieldValue.increment(-mealRecord.calories.toDouble()),
+                        "protein" to FieldValue.increment(-mealRecord.protein.toDouble()),
+                        "fat" to FieldValue.increment(-mealRecord.fat),
+                        "sodium" to FieldValue.increment(-mealRecord.sodium),
+                        "calcium" to FieldValue.increment(-mealRecord.calcium),
+                        "iron" to FieldValue.increment(-mealRecord.iron),
+                        "vitaminA" to FieldValue.increment(-mealRecord.vitaminA),
+                        "vitaminC" to FieldValue.increment(-mealRecord.vitaminC)
+                    )
+                    transaction.update(dailyNutritionRef, updates)
                 }
             }
-            .addOnFailureListener { e ->
-                Log.e("MealViewModel", "❌ MealRecord 검색 실패!", e)
-                onFailure(e)
-            }
+            // MealRecord 삭제
+            transaction.delete(mealRecordRef)
+            null
+        }.addOnSuccessListener {
+            Log.d("MealViewModel", "✅ 식단 기록 삭제 성공!")
+            onSuccess()
+        }.addOnFailureListener { e ->
+            Log.e("MealViewModel", "❌ 식단 기록 삭제 실패!", e)
+            onFailure(e)
+        }
     }
 }
