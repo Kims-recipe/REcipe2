@@ -46,12 +46,16 @@ class MyPageViewModel : ViewModel() {
 
     private fun fetchUserRecipes() {
         if (userId == null) return
-        db.collection("users").document(userId).collection("recipes")
+        db.collection("users").document(userId).collection("userRecipes")
             .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+                if (error != null) {
+                    Log.e("MyPageViewModel", "나만의 레시피 로딩 실패", error)
+                    return@addSnapshotListener
+                }
                 _userRecipes.value = snapshot?.map { doc ->
                     doc.toObject(UserRecipe::class.java).apply { id = doc.id }
                 } ?: emptyList()
+                Log.d("MyPageViewModel", "나만의 레시피 로드됨: ${_userRecipes.value?.size}개")
             }
     }
 
