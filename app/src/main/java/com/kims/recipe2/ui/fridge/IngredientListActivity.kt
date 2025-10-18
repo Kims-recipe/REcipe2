@@ -10,6 +10,7 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.LinearLayout
 import android.widget.Toast
+import android.widget.AdapterView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -48,6 +49,7 @@ class IngredientListActivity : AppCompatActivity() {
 
         setupToolbar()
         setupRecyclerView()
+        setupSortSpinner()
         observeViewModel()
 
         // 자동완성을 위해 Firestore의 전체 재료 목록을 미리 로드
@@ -55,6 +57,26 @@ class IngredientListActivity : AppCompatActivity() {
 
         binding.fabAddIngredient.setOnClickListener {
             showAddIngredientDialog()
+        }
+    }
+
+    private fun setupSortSpinner() {
+        val sortOptions = listOf("유통기한", "이름", "수량",)
+        val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, sortOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        binding.spinnerSortOptions.adapter = adapter
+
+        binding.spinnerSortOptions.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                val selectedOption = when (position) {
+                    0 -> SortOption.EXPIRATION_DATE
+                    1 -> SortOption.NAME
+                    2 -> SortOption.QUANTITY
+                    else -> SortOption.EXPIRATION_DATE
+                }
+                viewModel.setSortOption(selectedOption)
+            }
+            override fun onNothingSelected(parent: AdapterView<*>) {}
         }
     }
 
@@ -89,7 +111,7 @@ class IngredientListActivity : AppCompatActivity() {
     }
 
     private fun observeViewModel() {
-        viewModel.ingredients.observe(this) { ingredients ->
+        viewModel.sortedIngredients.observe(this) { ingredients ->
             (binding.rvIngredientList.adapter as IngredientAdapter).submitList(ingredients)
         }
         // 액티비티가 시작될 때 필터링된 재료 목록을 가져옴

@@ -109,20 +109,20 @@ class MyPageFragment : Fragment() {
             }
         }
 
-        viewModel.stats.observe(viewLifecycleOwner) { stats ->
-            if (stats.size >= 2) {
-                ItemMypageStatBinding.bind(binding.statCard1.root).apply {
-                    tvStatIcon.text = stats[0].icon
-                    tvStatLabel.text = stats[0].label
-                    tvStatValue.text = stats[0].value
-                }
-                ItemMypageStatBinding.bind(binding.statCard2.root).apply {
-                    tvStatIcon.text = stats[1].icon
-                    tvStatLabel.text = stats[1].label
-                    tvStatValue.text = stats[1].value
-                }
-            }
-        }
+//        viewModel.stats.observe(viewLifecycleOwner) { stats ->
+//            if (stats.size >= 2) {
+//                ItemMypageStatBinding.bind(binding.statCard1.root).apply {
+//                    tvStatIcon.text = stats[0].icon
+//                    tvStatLabel.text = stats[0].label
+//                    tvStatValue.text = stats[0].value
+//                }
+//                ItemMypageStatBinding.bind(binding.statCard2.root).apply {
+//                    tvStatIcon.text = stats[1].icon
+//                    tvStatLabel.text = stats[1].label
+//                    tvStatValue.text = stats[1].value
+//                }
+//            }
+//        }
 
         viewModel.weeklyProgress.observe(viewLifecycleOwner) { progressList ->
             (binding.rvWeeklyGoals.adapter as? NutritionAdapter)?.submitList(progressList)

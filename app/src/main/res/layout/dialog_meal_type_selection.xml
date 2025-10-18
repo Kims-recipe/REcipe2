@@ -32,6 +32,7 @@
         android:orientation="horizontal"
         android:layout_gravity="center_horizontal"
         android:baselineAligned="false">
+
         <LinearLayout
             android:id="@+id/ll_home_cooking"
             android:layout_width="0dp"
@@ -49,14 +50,14 @@
                 android:layout_height="40dp"
                 android:layout_marginBottom="8dp"
                 android:src="@drawable/ic_home_cooking"
-                app:tint="@color/primary_blue" /> <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="집밥"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
+                app:tint="@color/primary_blue" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="집밥"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
@@ -64,7 +65,6 @@
                 android:text="직접 요리한 음식"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
-
         </LinearLayout>
 
         <LinearLayout
@@ -84,14 +84,14 @@
                 android:layout_height="40dp"
                 android:layout_marginBottom="8dp"
                 android:src="@drawable/ic_restaurant"
-                app:tint="@color/primary_blue" /> <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="외식"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-
+                app:tint="@color/primary_blue" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="외식"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold" />
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -100,11 +100,47 @@
                 android:text="식당에서 먹은 음식"
                 android:textColor="@color/text_secondary"
                 android:textSize="12sp" />
-
         </LinearLayout>
-
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/ll_food_shot"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="120dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_meal_option"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginBottom="8dp"
+            android:gravity="center"
+            android:text="📸"
+            android:textSize="32sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="푸드샷"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center"
+            android:text="사진으로 간단히 기록"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
+    </LinearLayout>
     <TextView
         android:id="@+id/tv_cancel"
         android:layout_width="wrap_content"

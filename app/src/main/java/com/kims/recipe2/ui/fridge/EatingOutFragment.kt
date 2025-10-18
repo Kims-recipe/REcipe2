@@ -33,6 +33,9 @@ class EatingOutFragment : Fragment() {
         if (result.resultCode == Activity.RESULT_OK) {
             selectedImageUri = result.data?.data
             binding.ivMealPreview.setImageURI(selectedImageUri)
+
+            binding.llPlaceholderGroup.visibility = View.GONE
+            binding.ivMealPreview.visibility = View.VISIBLE
         }
     }
 
@@ -47,30 +50,28 @@ class EatingOutFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupMealTimeSpinner()
+        setupMealTimeToggleGroup()
         setupImagePicker()
         setupSaveButton()
     }
 
-    private fun setupMealTimeSpinner() {
-        val mealTimes = listOf("아침", "점심", "저녁")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mealTimes)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerMealTime.adapter = adapter
-
-        binding.spinnerMealTime.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
-                selectedMealTime = mealTimes[position]
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>) {
-                // Do nothing
+    private fun setupMealTimeToggleGroup() {
+        // 토글 버튼 그룹에 리스너 설정
+        binding.toggleMealTime.addOnButtonCheckedListener { group, checkedId, isChecked ->
+            // isChecked는 버튼이 선택되었을 때만 true가 됨
+            if (isChecked) {
+                selectedMealTime = when (checkedId) {
+                    R.id.btn_breakfast -> "아침"
+                    R.id.btn_lunch -> "점심"
+                    R.id.btn_dinner -> "저녁"
+                    else -> "아침" // 혹시 모를 기본값
+                }
             }
         }
     }
 
     private fun setupImagePicker() {
-        binding.ivMealPreview.setOnClickListener {
+        binding.flImageContainer.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
             imagePickerLauncher.launch(intent)
         }

@@ -168,6 +168,39 @@ class HomeFragment : Fragment() {
         }
 
         viewModel.todayMealRecords.observe(viewLifecycleOwner) { meals ->
+            // 1. 기록된 식사 타입만 Set으로 추출 ("아침", "점심", "저녁" 등)
+            val recordedTypes = meals.map { it.type }.toSet()
+
+            // 2. 아침 상태 업데이트
+            if (recordedTypes.contains("아침")) {
+                binding.tvMealStatusBreakfast.text = "아침 ✅"
+                binding.tvMealStatusBreakfast.alpha = 1.0f // 선명하게
+            } else {
+                binding.tvMealStatusBreakfast.text = "아침 ❌"
+                binding.tvMealStatusBreakfast.alpha = 0.7f // 흐리게
+            }
+
+            // 3. 점심 상태 업데이트
+            if (recordedTypes.contains("점심")) {
+                binding.tvMealStatusLunch.text = "점심 ✅"
+                binding.tvMealStatusLunch.alpha = 1.0f
+            } else {
+                binding.tvMealStatusLunch.text = "점심 ❌"
+                binding.tvMealStatusLunch.alpha = 0.7f
+            }
+
+            // 4. 저녁 상태 업데이트
+            if (recordedTypes.contains("저녁")) {
+                binding.tvMealStatusDinner.text = "저녁 ✅"
+                binding.tvMealStatusDinner.alpha = 1.0f
+            } else {
+                binding.tvMealStatusDinner.text = "저녁 ❌"
+                binding.tvMealStatusDinner.alpha = 0.7f
+            }
+            // ▲▲▲ [추가] 여기까지 ▲▲▲
+
+
+            // ▼▼▼ [기존 코드] 오늘 식단 기록 스크롤 뷰 업데이트 ▼▼▼
             binding.llMealRecords.removeAllViews()
             if (meals.isEmpty()) {
                 binding.tvNoMealRecords.visibility = View.VISIBLE

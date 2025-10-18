@@ -40,6 +40,9 @@ class HomemadeMealFragment : Fragment() {
         if (result.resultCode == Activity.RESULT_OK) {
             selectedImageUri = result.data?.data
             binding.ivMealPreview.setImageURI(selectedImageUri)
+
+            binding.llPlaceholderGroup.visibility = View.GONE
+            binding.ivMealPreview.visibility = View.VISIBLE
         }
     }
 
@@ -61,15 +64,15 @@ class HomemadeMealFragment : Fragment() {
     }
 
     private fun setupSpinnersAndPickers() {
-        val mealTimes = listOf("아침", "점심", "저녁")
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, mealTimes)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.spinnerMealTime.adapter = adapter
-        binding.spinnerMealTime.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>, view: View?, pos: Int, id: Long) {
-                selectedMealTime = mealTimes[pos]
+        binding.toggleMealTime.addOnButtonCheckedListener { group, checkedId, isChecked ->
+            if (isChecked) {
+                selectedMealTime = when (checkedId) {
+                    R.id.btn_breakfast -> "아침"
+                    R.id.btn_lunch -> "점심"
+                    R.id.btn_dinner -> "저녁"
+                    else -> "아침"
+                }
             }
-            override fun onNothingSelected(parent: AdapterView<*>) {}
         }
     }
 
@@ -157,7 +160,7 @@ class HomemadeMealFragment : Fragment() {
 
 
     private fun setupClickListeners() {
-        binding.ivMealPreview.setOnClickListener {
+        binding.flImageContainer.setOnClickListener {
             val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
             imagePickerLauncher.launch(intent)
         }
@@ -236,6 +239,12 @@ class HomemadeMealFragment : Fragment() {
                 updateSelectedIngredientsList()
                 binding.etMealName.text.clear()
                 binding.switchSaveRecipe.isChecked = false
+                selectedImageUri = null // ▼▼▼ [추가]
+
+                // ▼▼▼ [추가] 이미지 뷰를 플레이스홀더로 리셋 ▼▼▼
+                binding.ivMealPreview.setImageDrawable(null)
+                binding.llPlaceholderGroup.visibility = View.VISIBLE
+                binding.ivMealPreview.visibility = View.GONE
 
                 val resultIntent = Intent().apply {
                     putExtra("NAVIGATE_TO_CALENDAR", true)

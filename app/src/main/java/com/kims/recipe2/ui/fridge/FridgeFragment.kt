@@ -17,6 +17,7 @@ import com.kims.recipe2.databinding.FragmentFridgeBinding
 import android.content.Intent
 import android.widget.AutoCompleteTextView
 import android.widget.LinearLayout
+import android.widget.AdapterView
 import androidx.core.view.isVisible
 import com.google.android.material.button.MaterialButtonToggleGroup
 import com.google.android.material.textfield.TextInputLayout
@@ -47,6 +48,7 @@ class FridgeFragment : Fragment() {
 
         setupSectionClickListeners()
         setupClickListeners()
+        setupSortSpinner()
 
         val categoryAdapter = FridgeCategoryAdapter { category ->
             navigateToIngredientList("category", category.name)
@@ -95,6 +97,39 @@ class FridgeFragment : Fragment() {
             binding.rvIngredients.isVisible = !isFullListEmpty
         }
         // ▲▲▲ [수정] 여기까지 ▲▲▲
+    }
+
+    private fun setupSortSpinner() {
+        val sortOptions = listOf("유통기한", "이름", "수량", "카테고리")
+        // 'requireContext()'를 사용합니다.
+        val adapter =
+            ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, sortOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+
+        // 위 2단계에서 추가한 ID를 사용합니다.
+        binding.spinnerSortOptionsFridge.adapter = adapter
+
+        binding.spinnerSortOptionsFridge.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    val selectedOption = when (position) {
+                        0 -> SortOption.EXPIRATION_DATE
+                        1 -> SortOption.NAME
+                        2 -> SortOption.QUANTITY
+                        3 -> SortOption.CATEGORY
+                        else -> SortOption.EXPIRATION_DATE
+                    }
+                    // viewModel의 새 함수 호출
+                    viewModel.setSortOption(selectedOption)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) {}
+            }
     }
 
     // ▼▼▼ [추가] 더보기/접기 버튼 클릭 리스너 설정 함수 ▼▼▼

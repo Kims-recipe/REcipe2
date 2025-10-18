@@ -23,6 +23,7 @@ class MealActivity : AppCompatActivity() {
             val fragment = when (mealType) {
                 "외식" -> EatingOutFragment()
                 "집밥" -> HomemadeMealFragment() // "집밥"일 경우 com.kims.recipe2.ui.fridge.HomemadeMealFragment 생성
+                "푸드샷" -> EatingOutFragment() // "나중에 추가"
                 else -> {
                     // 기본값 또는 오류 처리 (예: 아무 프래그먼트도 로드하지 않거나 기본 프래그먼트 로드)
                     // 여기서는 EatingOutFragment를 기본으로 로드하도록 설정했습니다.

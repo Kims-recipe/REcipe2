@@ -73,20 +73,75 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
-                <Spinner
-                    android:id="@+id/spinner_meal_time"
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/toggle_meal_time"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp" />
+                    android:layout_marginTop="8dp"
+                    app:checkedButton="@id/btn_breakfast"
+                    app:singleSelection="true"> <Button
+                    android:id="@+id/btn_breakfast"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="아침" />
 
-                <ImageView
-                    android:id="@+id/iv_meal_preview"
+                    <Button
+                        android:id="@+id/btn_lunch"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="점심" />
+
+                    <Button
+                        android:id="@+id/btn_dinner"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="저녁" />
+
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+
+                <FrameLayout
+                    android:id="@+id/fl_image_container"
                     android:layout_width="match_parent"
                     android:layout_height="200dp"
-                    android:layout_marginTop="12dp"
-                    android:scaleType="centerCrop"
-                    android:background="#DDDDDD"
-                    android:contentDescription="식사 이미지" />
+                    android:background="@drawable/addd_photo_background"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground">
+
+                    <ImageView
+                        android:id="@+id/iv_meal_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:scaleType="centerCrop"
+                        android:visibility="gone" />
+                    <LinearLayout
+                        android:id="@+id/ll_placeholder_group"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:visibility="visible"> <ImageView
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:src="@drawable/ic_menu_camera"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="사진 추가하기"
+                            android:textAppearance="?attr/textAppearanceBodyMedium" />
+                    </LinearLayout>
+
+                </FrameLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 

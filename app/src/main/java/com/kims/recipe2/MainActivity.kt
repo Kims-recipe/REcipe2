@@ -74,6 +74,12 @@ class MainActivity : AppCompatActivity() {
             dialog.dismiss()
         }
 
+        // ▼▼▼ [추가] 푸드샷 선택 ▼▼▼
+        dialogBinding.llFoodShot.setOnClickListener {
+            navigateToMealActivity("푸드샷")
+            dialog.dismiss()
+        }
+
         // 취소 버튼
         dialogBinding.tvCancel.setOnClickListener {
             dialog.dismiss()

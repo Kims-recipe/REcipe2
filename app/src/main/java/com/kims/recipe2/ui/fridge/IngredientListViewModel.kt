@@ -2,14 +2,24 @@ package com.kims.recipe2.ui.fridge
 
 import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.kims.recipe2.model.Food
 import com.kims.recipe2.model.Ingredient
+import com.kims.recipe2.util.DateUtil
 import java.util.Calendar
 import java.util.Date
+
+enum class SortOption {
+    EXPIRATION_DATE, // 유통기한
+    NAME,            // 이름
+    QUANTITY,        // 수량
+    CATEGORY,        // 카테고리
+    LOCATION         // 위치
+}
 
 class IngredientListViewModel : ViewModel() {
 
@@ -19,6 +29,13 @@ class IngredientListViewModel : ViewModel() {
     private val _ingredients = MutableLiveData<List<Ingredient>>()
     val ingredients: LiveData<List<Ingredient>> = _ingredients
 
+    // [추가] 현재 정렬 옵션을 저장할 LiveData
+    private val _sortOption = MutableLiveData(SortOption.EXPIRATION_DATE) // 기본값: 유통기한 순
+
+    // Activity에 노출할 최종 '정렬된' 목록 (MediatorLiveData)
+    private val _sortedIngredients = MediatorLiveData<List<Ingredient>>()
+    val sortedIngredients: LiveData<List<Ingredient>> = _sortedIngredients
+
     private val _searchResults = MutableLiveData<List<String>>()
     val searchResults: LiveData<List<String>> = _searchResults
 
@@ -27,6 +44,37 @@ class IngredientListViewModel : ViewModel() {
     val calculatedExpirationDate: LiveData<Date> = _calculatedExpirationDate
 
     private var allFoodIngredients: List<String>? = null
+
+    init {
+        // ▼▼▼ [추가] _ingredients나 _sortOption이 변경될 때마다 정렬을 다시 수행 ▼▼▼
+        _sortedIngredients.addSource(_ingredients) { combineAndSort() }
+        _sortedIngredients.addSource(_sortOption) { combineAndSort() }
+    }
+
+    // ▼▼▼ [추가] 정렬을 수행하는 함수 ▼▼▼
+    private fun combineAndSort() {
+        val ingredients = _ingredients.value ?: emptyList()
+        val sortOption = _sortOption.value ?: SortOption.EXPIRATION_DATE
+
+        _sortedIngredients.value = when (sortOption) {
+            SortOption.EXPIRATION_DATE -> ingredients.sortedWith(
+                compareBy(
+                    { it.expirationDate == null }, // 유통기한 없는 것 뒤로
+                    { DateUtil.calculateDDay(it.expirationDate) } // D-day 순
+                )
+            )
+            SortOption.NAME -> ingredients.sortedBy { it.name }
+            SortOption.QUANTITY -> ingredients.sortedByDescending { if (it.amount > 0) it.amount else it.quantity } // 양(g) 또는 개수
+            SortOption.CATEGORY -> ingredients.sortedBy { it.category }
+            SortOption.LOCATION -> ingredients.sortedBy { it.location }
+        }
+    }
+
+    // ▼▼▼ [추가] Activity에서 정렬 옵션을 변경할 함수 ▼▼▼
+    fun setSortOption(sortOption: SortOption) {
+        _sortOption.value = sortOption
+    }
+
 
     // 👇 [추가] 재료 이름으로 유통기한을 계산하는 함수
     fun calculateExpirationDateFor(ingredientName: String) {
