@@ -219,9 +219,14 @@ class HomemadeMealFragment : Fragment() {
             mealViewModel.saveUserRecipe(mealName, ingredientsToConsume)
         }
 
+        // 로딩 표시
+        if (selectedImageUri != null) {
+            Toast.makeText(requireContext(), "이미지를 업로드 중...", Toast.LENGTH_SHORT).show()
+        }
+
         mealViewModel.saveMealRecord(
             mealName, selectedMealTime, ingredientsToConsume,
-            selectedImageUri?.toString(), true,
+            selectedImageUri, true,
             onSuccess = {
                 Toast.makeText(requireContext(), "✅ 식사 기록 완료!", Toast.LENGTH_SHORT).show()
                 // ▼▼▼ [수정] 사용자가 입력한 만큼만 재료 소비 ▼▼▼
