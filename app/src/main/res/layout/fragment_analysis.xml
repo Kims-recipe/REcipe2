@@ -32,7 +32,8 @@
             android:orientation="vertical"
             android:padding="16dp"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:background="@color/background_light">
 
             <!-- 상단 카테고리 카드 3개-->
             <LinearLayout

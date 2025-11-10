@@ -31,6 +31,12 @@ class LoginActivity : AppCompatActivity() {
             }
         }
 
+        // 👇 [추가된 코드] 회원가입 텍스트 클릭 리스너
+        binding.tvGoToSignUp.setOnClickListener {
+            val intent = Intent(this, SignUpActivity::class.java)
+            startActivity(intent)
+        }
+
         // ViewModel의 로그인 상태 관찰
         viewModel.loginStatus.observe(this) { status ->
             when (status) {

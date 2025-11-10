@@ -1,16 +1,36 @@
 package com.kims.recipe2
 
+import android.app.Activity
+import android.app.Dialog
 import android.content.Intent
 import android.os.Bundle
-import androidx.appcompat.app.AlertDialog
+import android.view.LayoutInflater
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.navigation.NavController
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.setupWithNavController
 import com.kims.recipe2.databinding.ActivityMainBinding
+import com.kims.recipe2.databinding.DialogMealTypeSelectionBinding
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private val navController: NavController by lazy {
+        (supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment).navController
+    }
+
+    // ActivityResultLauncher 등록
+    private val mealActivityLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val navigateToCalendar =
+                result.data?.getBooleanExtra("NAVIGATE_TO_CALENDAR", false) ?: false
+            if (navigateToCalendar) {
+                // mobile_navigation.xml 파일에 정의된 ID를 사용합니다.
+                navController.navigate(R.id.navigation_calendar)
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,17 +55,37 @@ class MainActivity : AppCompatActivity() {
 
     // 식사 유형 선택 다이얼로그 표시 함수
     private fun showMealTypeDialog() {
-        val mealTypes = arrayOf("외식", "집밥")
-        AlertDialog.Builder(this)
-            .setTitle("식사 유형 선택")
-            .setItems(mealTypes) { dialog, which ->
-                val selectedMealType = mealTypes[which]
-                navigateToMealActivity(selectedMealType)
-            }
-            .setNegativeButton("취소") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .show()
+        val dialogBinding = DialogMealTypeSelectionBinding.inflate(LayoutInflater.from(this))
+        val dialog = Dialog(this).apply {
+            setContentView(dialogBinding.root)
+            window?.setBackgroundDrawableResource(android.R.color.transparent)
+            setCancelable(true)
+        }
+
+        // 집밥 선택
+        dialogBinding.llHomeCooking.setOnClickListener {
+            navigateToMealActivity("집밥")
+            dialog.dismiss()
+        }
+
+        // 외식 선택
+        dialogBinding.llRestaurant.setOnClickListener {
+            navigateToMealActivity("외식")
+            dialog.dismiss()
+        }
+
+        // ▼▼▼ [추가] 푸드샷 선택 ▼▼▼
+        dialogBinding.llFoodShot.setOnClickListener {
+            navigateToMealActivity("푸드샷")
+            dialog.dismiss()
+        }
+
+        // 취소 버튼
+        dialogBinding.tvCancel.setOnClickListener {
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     // MealActivity로 이동하는 함수

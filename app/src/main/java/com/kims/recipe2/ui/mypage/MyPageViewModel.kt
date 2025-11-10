@@ -1,127 +1,171 @@
 package com.kims.recipe2.ui.mypage
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.kims.recipe2.model.DailyNutrition
-import com.kims.recipe2.model.MyPageStat
-import com.kims.recipe2.model.NutritionItem
+import com.kims.recipe2.model.*
 import java.text.SimpleDateFormat
-import java.util.Calendar
-import java.util.Date
-import java.util.Locale
-
-// UI 상태를 나타내는 Enum 클래스들
-enum class TimePeriod { DAILY, WEEKLY, MONTHLY }
-enum class ChartType { TREND, CUMULATIVE }
+import java.util.*
 
 class MyPageViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-    // LiveData 선언
-    private val _chartDataList = MutableLiveData<List<DailyNutrition>>()
-    val chartDataList: LiveData<List<DailyNutrition>> = _chartDataList // '추이' 차트용
-
-    private val _cumulativeChartData = MutableLiveData<Map<String, Double>>()
-    val cumulativeChartData: LiveData<Map<String, Double>> = _cumulativeChartData // '누적' 차트용
+    private val _chartData = MutableLiveData<Map<String, Float>>()
+    val chartData: LiveData<Map<String, Float>> = _chartData
 
     private val _isLoading = MutableLiveData<Boolean>()
     val isLoading: LiveData<Boolean> = _isLoading
 
-    // 정적 데이터 LiveData (기존과 동일)
     private val _stats = MutableLiveData<List<MyPageStat>>()
     val stats: LiveData<List<MyPageStat>> = _stats
+
     private val _weeklyProgress = MutableLiveData<List<NutritionItem>>()
     val weeklyProgress: LiveData<List<NutritionItem>> = _weeklyProgress
+
     private val _achievement = MutableLiveData<Pair<String, String>>()
     val achievement: LiveData<Pair<String, String>> = _achievement
 
+    private val _userInfo = MutableLiveData<UserInfo>()
+    val userInfo: LiveData<UserInfo> = _userInfo
+
+    private val _userRecipes = MutableLiveData<List<UserRecipe>>()
+    val userRecipes: LiveData<List<UserRecipe>> = _userRecipes
+
     init {
+        fetchUserInfo()
+        fetchUserRecipes()
         loadStaticData()
-        // 기본값: 일간(이번 주) 추이 데이터 로드
-        loadNutritionDataFor(TimePeriod.DAILY, ChartType.TREND, "칼로리")
+        loadNutritionDataFor(TimePeriod.DAILY, "칼로리")
     }
 
-    // UI 컨트롤러에서 상태가 변경될 때마다 호출될 메인 함수
-    fun loadNutritionDataFor(period: TimePeriod, chartType: ChartType, nutrient: String) {
+    private fun fetchUserRecipes() {
         if (userId == null) return
+        db.collection("users").document(userId).collection("userRecipes")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e("MyPageViewModel", "나만의 레시피 로딩 실패", error)
+                    return@addSnapshotListener
+                }
+                _userRecipes.value = snapshot?.map { doc ->
+                    doc.toObject(UserRecipe::class.java).apply { id = doc.id }
+                } ?: emptyList()
+                Log.d("MyPageViewModel", "나만의 레시피 로드됨: ${_userRecipes.value?.size}개")
+            }
+    }
+
+    private fun fetchUserInfo() {
+        if (userId == null) return
+
+        db.collection("users").document(userId)
+            .collection("userInfo").document("profile")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                snapshot?.toObject(UserInfo::class.java)?.let { fetchedUserInfo ->
+                    _userInfo.value = fetchedUserInfo
+                    fetchTodaysNutritionForWeeklyProgress(fetchedUserInfo)
+                }
+            }
+    }
+
+    private fun fetchTodaysNutritionForWeeklyProgress(userInfo: UserInfo) {
+        if (userId == null) return
+        val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        db.collection("users").document(userId)
+            .collection("dailyNutrition").document(todayDateString)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) return@addSnapshotListener
+                val todaysNutrition = if (snapshot != null && snapshot.exists()) {
+                    snapshot.toObject(DailyNutrition::class.java)
+                } else {
+                    DailyNutrition()
+                }
+
+                _weeklyProgress.value = listOf(
+                    NutritionItem("칼로리", "🔥", "#ff6b6b", todaysNutrition?.calories?.toFloat() ?: 0f, userInfo.goalCalories.toFloat(), "kcal"),
+                    NutritionItem("단백질", "💪", "#4ecdc4", todaysNutrition?.protein?.toFloat() ?: 0f, userInfo.goalProtein.toFloat(), "g"),
+                    NutritionItem("탄수화물", "🌾", "#45b7d1", todaysNutrition?.carbs?.toFloat() ?: 0f, userInfo.goalCarbs.toFloat(), "g")
+                )
+            }
+    }
+
+    private fun loadStaticData() {
+        _stats.value = listOf(
+            MyPageStat("🍜", "이번 주 최다", "김치찌개"),
+            MyPageStat("💊", "필요 영양소", "비타민 C")
+        )
+        _achievement.value = "건강한 한 달!" to "목표 칼로리 달성 23일"
+    }
+
+    fun loadNutritionDataFor(period: TimePeriod, nutrient: String) {
+        if (userId == null) {
+            _chartData.value = emptyMap()
+            return
+        }
         _isLoading.value = true
 
-        // '누적' 차트는 더 넓은 기간의 데이터가 필요하므로 연초부터 오늘까지 데이터를 가져옴
         val calendar = Calendar.getInstance()
-        calendar.set(Calendar.DAY_OF_YEAR, 1)
-        val startOfYear = calendar.time
-        val endOfYear = Date()
+        calendar.add(Calendar.MONTH, -6)
+        val startDate = calendar.time
 
         db.collection("users").document(userId).collection("dailyNutrition")
-            .whereGreaterThanOrEqualTo("date", startOfYear)
-            .whereLessThanOrEqualTo("date", endOfYear)
-            .orderBy("date")
+            .whereGreaterThanOrEqualTo("date", startDate)
+            .orderBy("date", Query.Direction.DESCENDING)
             .get()
             .addOnSuccessListener { documents ->
                 val allData = documents.toObjects(DailyNutrition::class.java)
-
-                if (chartType == ChartType.TREND) {
-                    _chartDataList.value = filterDataForTrend(allData, period)
-                } else { // CUMULATIVE
-                    _cumulativeChartData.value = calculateCumulativeData(allData, period, nutrient)
-                }
+                processDataForChart(allData, period, nutrient)
                 _isLoading.value = false
-            }
-            .addOnFailureListener {
+            }.addOnFailureListener {
+                _chartData.value = emptyMap()
                 _isLoading.value = false
             }
     }
 
-    // 추이 그래프를 위해 데이터를 기간별로 필터링하는 함수
-    private fun filterDataForTrend(data: List<DailyNutrition>, period: TimePeriod): List<DailyNutrition> {
-        val calendar = Calendar.getInstance()
-        val today = Date()
-        val sdf = SimpleDateFormat("yyyyMMdd", Locale.KOREA)
-
-        return data.filter { daily ->
-            val dailyDate = daily.date ?: return@filter false
-            when (period) {
-                TimePeriod.DAILY, TimePeriod.WEEKLY -> {
-                    // 이번 주에 속하는지 확인
-                    val calToday = Calendar.getInstance().apply { time = today }
-                    val calDaily = Calendar.getInstance().apply { time = dailyDate }
-                    calToday.get(Calendar.WEEK_OF_YEAR) == calDaily.get(Calendar.WEEK_OF_YEAR) &&
-                            calToday.get(Calendar.YEAR) == calDaily.get(Calendar.YEAR)
+    private fun processDataForChart(data: List<DailyNutrition>, period: TimePeriod, nutrient: String) {
+        val processedData = when (period) {
+            TimePeriod.DAILY -> {
+                val dailyData = data.take(7).reversed()
+                dailyData.associate {
+                    val dateLabel = SimpleDateFormat("M/d", Locale.KOREA).format(it.date!!)
+                    dateLabel to getNutrientValue(it, nutrient).toFloat()
                 }
-                TimePeriod.MONTHLY -> {
-                    // 이번 달에 속하는지 확인
-                    sdf.format(today).substring(0, 6) == sdf.format(dailyDate).substring(0, 6)
+            }
+            TimePeriod.WEEKLY -> {
+                val weeklyAverages = mutableMapOf<String, Pair<Double, Int>>()
+                for (daily in data) {
+                    val weekKey = getWeekLabel(daily.date!!)
+                    if (weekKey.isNotEmpty() && (weeklyAverages.size < 6 || weeklyAverages.containsKey(weekKey))) {
+                        val current = weeklyAverages.getOrDefault(weekKey, Pair(0.0, 0))
+                        weeklyAverages[weekKey] = Pair(current.first + getNutrientValue(daily, nutrient), current.second + 1)
+                    }
+                }
+                weeklyAverages.mapValues { (_, value) ->
+                    if (value.second == 0) 0f else (value.first / value.second).toFloat()
+                }
+            }
+            TimePeriod.MONTHLY -> {
+                val monthlyAverages = mutableMapOf<String, Pair<Double, Int>>()
+                for (daily in data) {
+                    val monthKey = getMonthLabel(daily.date!!)
+                    if (monthKey.isNotEmpty() && (monthlyAverages.size < 6 || monthlyAverages.containsKey(monthKey))) {
+                        val current = monthlyAverages.getOrDefault(monthKey, Pair(0.0, 0))
+                        monthlyAverages[monthKey] = Pair(current.first + getNutrientValue(daily, nutrient), current.second + 1)
+                    }
+                }
+                monthlyAverages.mapValues { (_, value) ->
+                    if (value.second == 0) 0f else (value.first / value.second).toFloat()
                 }
             }
         }
+        _chartData.value = processedData
     }
 
-    // 누적 그래프를 위해 데이터를 기간별로 그룹화하고 합산하는 함수
-    private fun calculateCumulativeData(data: List<DailyNutrition>, period: TimePeriod, nutrient: String): Map<String, Double> {
-        val calendar = Calendar.getInstance()
-        val groupedData = mutableMapOf<String, Double>()
-
-        for (daily in data) {
-            calendar.time = daily.date!!
-            // X축 라벨(키) 생성
-            val key = when (period) {
-                TimePeriod.WEEKLY -> "${calendar.get(Calendar.MONTH) + 1}월 ${calendar.get(Calendar.WEEK_OF_MONTH)}주차"
-                TimePeriod.MONTHLY -> "${calendar.get(Calendar.MONTH) + 1}월"
-                else -> SimpleDateFormat("M/d", Locale.KOREA).format(daily.date) // 일간 누적은 의미 없지만 기본값 처리
-            }
-            val value = getNutrientValue(daily, nutrient)
-            groupedData[key] = (groupedData[key] ?: 0.0) + value
-        }
-        return groupedData
-    }
-
-    // 문자열로 특정 영양소 값을 가져오는 헬퍼 함수
     fun getNutrientValue(data: DailyNutrition, nutrient: String): Double {
         return when (nutrient) {
             "칼로리" -> data.calories
@@ -132,20 +176,35 @@ class MyPageViewModel : ViewModel() {
         }
     }
 
-    /* 기간/필터와 상관없이 고정된 데이터를 로드하는 함수입니다.
-    * (통계 카드, 주간 목표, 월간 성취 등)
-    */
-    private fun loadStaticData() {
-        // 실제 앱에서는 이 데이터들도 Firestore에서 가져올 수 있습니다.
-        // 현재는 데모용 고정 데이터를 사용합니다.
-        _stats.value = listOf(
-            MyPageStat("🍜", "이번 주 최다", "김치찌개"),
-            MyPageStat("💊", "필요 영양소", "비타민 C")
-        )
-        _weeklyProgress.value = listOf(
-            NutritionItem("칼로리", "🔥", "#ff6b6b", 1750f, 2000f, "kcal"),
-            NutritionItem("단백질", "💪", "#4ecdc4", 52f, 60f, "g"),
-            NutritionItem("비타민 C", "🍎", "#ff9ff3", 65f, 100f, "mg")
-        )
+    private fun getWeekLabel(date: Date): String {
+        val today = Calendar.getInstance()
+        val target = Calendar.getInstance().apply { time = date }
+
+        var weekDiff = 0
+        if (today.get(Calendar.YEAR) != target.get(Calendar.YEAR)){
+            val daysBetween = ((today.timeInMillis - target.timeInMillis) / (1000 * 60 * 60 * 24)).toInt()
+            weekDiff = daysBetween / 7
+        } else {
+            weekDiff = today.get(Calendar.WEEK_OF_YEAR) - target.get(Calendar.WEEK_OF_YEAR)
+        }
+
+        return when (weekDiff) {
+            0 -> "이번주"
+            in 1..5 -> "${weekDiff}주전"
+            else -> ""
+        }
+    }
+
+    private fun getMonthLabel(date: Date): String {
+        val today = Calendar.getInstance()
+        val target = Calendar.getInstance().apply { time = date }
+        val monthDiff = (today.get(Calendar.YEAR) - target.get(Calendar.YEAR)) * 12 +
+                (today.get(Calendar.MONTH) - target.get(Calendar.MONTH))
+
+        return when (monthDiff) {
+            0 -> "이번달"
+            in 1..5 -> "${monthDiff}달전"
+            else -> ""
+        }
     }
 }

@@ -2,31 +2,55 @@ package com.kims.recipe2.ui.fridge
 
 import android.util.Log
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import com.google.android.play.integrity.internal.al
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.toObjects
 import com.kims.recipe2.model.FridgeCategory
 import com.kims.recipe2.model.Ingredient // 새로 만들 데이터 모델
+import com.kims.recipe2.util.DateUtil
+
+data class IngredientUIState(
+    val displayList: List<Ingredient> = emptyList(),
+    val isExpanded: Boolean = false,
+    val shouldShowButton: Boolean = false
+)
 
 class FridgeViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-    // 1. 카테고리 목록 수정
+    // [추가] 현재 정렬 옵션을 저장할 LiveData
+    private val _sortOption = MutableLiveData(SortOption.EXPIRATION_DATE) // 기본값: 유통기한 순
+
     private val _categories = MutableLiveData<List<FridgeCategory>>()
     val categories: LiveData<List<FridgeCategory>> = _categories
 
-    // 2. Firestore에서 가져온 재료 목록을 담을 LiveData 추가
     private val _ingredients = MutableLiveData<List<Ingredient>>()
     val ingredients: LiveData<List<Ingredient>> = _ingredients
+
+    // ▼▼▼ [추가] UI 상태 관리 로직 ▼▼▼
+    private val _isIngredientsExpanded = MutableLiveData(false)
+    private val _ingredientUIState = MediatorLiveData<IngredientUIState>()
+    val ingredientUIState: LiveData<IngredientUIState> = _ingredientUIState
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
 
     init {
         loadCategories()
         fetchIngredients() // ViewModel 생성 시 재료 목록을 가져옵니다.
+        // MediatorLiveData에 소스 연결
+        _ingredientUIState.addSource(_ingredients) { updateIngredientState() }
+        _ingredientUIState.addSource(_isIngredientsExpanded) { updateIngredientState() }
+        _ingredientUIState.addSource(_sortOption) { updateIngredientState() } // 👈 [추가]
+    }
+
+    fun setSortOption(sortOption: SortOption) {
+        _sortOption.value = sortOption
     }
 
     private fun loadCategories() {
@@ -40,6 +64,50 @@ class FridgeViewModel : ViewModel() {
             FridgeCategory("가공식품", "햄, 소시지...", "🥓", "#fd79a8")
         )
     }
+    // ▼▼▼ [추가] '더보기/접기' 상태를 변경하는 함수 ▼▼▼
+    fun toggleIngredientsExpansion() {
+        _isIngredientsExpanded.value = !(_isIngredientsExpanded.value ?: false)
+    }
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
+
+    // ▼▼▼ [추가] UI 상태를 계산하고 발행하는 함수 ▼▼▼
+    private fun updateIngredientState() {
+        val fullList = _ingredients.value ?: emptyList()
+        val isExpanded = _isIngredientsExpanded.value ?: false
+        val sortOption = _sortOption.value ?: SortOption.EXPIRATION_DATE // 👈 [추가]
+
+
+        // ▼▼▼ [수정] 하드코딩된 정렬을 'when' 블록으로 변경 ▼▼▼
+        val sortedList = when (sortOption) {
+            SortOption.EXPIRATION_DATE -> fullList.sortedWith(
+                compareBy(
+                    { it.expirationDate == null },
+                    { DateUtil.calculateDDay(it.expirationDate) }
+                )
+            )
+            SortOption.NAME -> fullList.sortedBy { it.name }
+            SortOption.QUANTITY -> fullList.sortedByDescending { if (it.amount > 0) it.amount else it.quantity }
+            SortOption.CATEGORY -> fullList.sortedBy { it.category }
+            SortOption.LOCATION -> fullList.sortedBy { it.location }
+        }
+        // ▲▲▲ [수정] 여기까지 ▲▲▲
+        // 재료가 5개 초과일 때만 '더보기/접기' 버튼을 표시
+        val shouldShowButton = sortedList.size > 5
+
+        // 확장 상태나 버튼이 필요 없는 경우 전체 목록, 그 외엔 5개만 표시
+        val displayList = if (isExpanded || !shouldShowButton) {
+            sortedList
+        } else {
+            sortedList.take(5)
+        }
+
+        _ingredientUIState.value = IngredientUIState(
+            displayList = displayList,
+            isExpanded = isExpanded,
+            shouldShowButton = shouldShowButton
+        )
+    }
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
 
     // 3. Firestore에서 재료 목록을 실시간으로 가져오는 함수
     private fun fetchIngredients() {
@@ -101,27 +169,45 @@ class FridgeViewModel : ViewModel() {
             }
     }
 
-    // 4. 새로운 재료를 Firestore에 추가하는 함수
-//    fun addIngredient(ingredient: Ingredient) { // Ingredient 객체를 통째로 받도록 수정
-//        // --- 디버깅을 위한 로그 추가 ---
-//        Log.d("FridgeViewModel", "addIngredient 호출됨")
-//        Log.d("FridgeViewModel", "현재 로그인된 User ID: $userId")
-//        Log.d("FridgeViewModel", "추가할 재료 정보: $ingredient")
-//        // ----------------------------
-//
-//        if (userId == null) {
-//            Log.e("FridgeViewModel", "User ID가 null입니다. 로그인 상태를 확인하세요.")
-//            return
-//        }
-//
-//        db.collection("users").document(userId).collection("ingredients")
-//            .add(ingredient) // Ingredient 객체를 직접 추가
-//            .addOnSuccessListener { documentReference ->
-//                // --- 성공/실패 로그 추가 ---
-//                Log.d("FridgeViewModel", "✅ 재료 추가 성공! 문서 ID: ${documentReference.id}")
-//            }
-//            .addOnFailureListener { e ->
-//                Log.e("FridgeViewModel", "❌ 재료 추가 실패!", e)
-//            }
-//    }
+    fun updateIngredient(ingredient: Ingredient) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("FridgeViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 수정할 수 없습니다.")
+            return
+        }
+
+        val ingredientMap = mapOf(
+            "name" to ingredient.name,
+            "category" to ingredient.category,
+            "location" to ingredient.location,
+            "quantity" to ingredient.quantity,
+            "amount" to ingredient.amount,
+            "unit" to ingredient.unit,
+            "expirationDate" to ingredient.expirationDate
+        )
+
+        db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+            .update(ingredientMap)
+            .addOnSuccessListener {
+                Log.d("FridgeViewModel", "✅ 재료 업데이트 성공: ${ingredient.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FridgeViewModel", "❌ 재료 업데이트 실패: ${ingredient.name}", e)
+            }
+    }
+
+    fun deleteIngredient(ingredient: Ingredient) {
+        if (userId == null || ingredient.id.isBlank()) {
+            Log.e("FridgeViewModel", "유효한 사용자 ID 또는 재료 ID가 없어 재료를 삭제할 수 없습니다.")
+            return
+        }
+
+        db.collection("users").document(userId).collection("ingredients").document(ingredient.id)
+            .delete()
+            .addOnSuccessListener {
+                Log.d("FridgeViewModel", "✅ 재료 삭제 성공: ${ingredient.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FridgeViewModel", "❌ 재료 삭제 실패: ${ingredient.name}", e)
+            }
+    }
 }

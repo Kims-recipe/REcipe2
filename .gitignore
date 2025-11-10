@@ -13,3 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Firebase sensitive files (Admin SDK key only)
+firebase-admin-key.json
+
+# Python scripts for demo data (optional for users)
+scripts/*.py
+scripts/__pycache__/
+scripts/*.pyc

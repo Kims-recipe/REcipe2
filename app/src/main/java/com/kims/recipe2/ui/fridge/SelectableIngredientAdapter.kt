@@ -26,7 +26,13 @@ class SelectableIngredientAdapter(
         fun bind(ingredient: Ingredient) {
             binding.tvIngredientName.text = ingredient.name
             binding.tvIngredientCategory.text = ingredient.category
-            binding.tvIngredientQuantity.text = "${ingredient.quantity}${ingredient.unit}"
+            if (ingredient.amount == 0) {
+                binding.tvIngredientAmount.text = ""
+                binding.tvIngredientQuantity.text = "${ingredient.quantity}개"
+            } else {
+                binding.tvIngredientQuantity.text = ""
+                binding.tvIngredientAmount.text = "${ingredient.amount}g"
+            }
 
             // D-day 계산 및 표시
             ingredient.expirationDate?.let { expirationDate ->

@@ -1,5 +1,6 @@
 package com.kims.recipe2.ui.fridge
 
+import android.app.DatePickerDialog
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,13 +15,25 @@ import com.google.android.material.textfield.TextInputEditText
 import com.kims.recipe2.R
 import com.kims.recipe2.databinding.FragmentFridgeBinding
 import android.content.Intent
+import android.widget.AutoCompleteTextView
+import android.widget.LinearLayout
+import android.widget.AdapterView
+import androidx.core.view.isVisible
+import com.google.android.material.button.MaterialButtonToggleGroup
+import com.google.android.material.textfield.TextInputLayout
+import com.kims.recipe2.model.Ingredient
 import com.kims.recipe2.ui.fridge.IngredientListActivity // 새로 만들 액티비티
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class FridgeFragment : Fragment() {
 
     private var _binding: FragmentFridgeBinding? = null
     private val binding get() = _binding!!
     private val viewModel: FridgeViewModel by viewModels()
+    private var selectedExpirationDate: Date? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -33,12 +46,11 @@ class FridgeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // 1. 각 구역 클릭 리스너 설정 (로직 변경)
         setupSectionClickListeners()
+        setupClickListeners()
+        setupSortSpinner()
 
-        // --- 기존 코드 (카테고리 목록, 재료 목록 RecyclerView 설정) ---
         val categoryAdapter = FridgeCategoryAdapter { category ->
-//            showAddIngredientDialog(category.name)
             navigateToIngredientList("category", category.name)
         }
 
@@ -50,21 +62,83 @@ class FridgeFragment : Fragment() {
             categoryAdapter.submitList(it)
         }
 
-        val ingredientAdapter = IngredientAdapter()
+        val ingredientAdapter = IngredientAdapter(
+            onItemClick = { ingredient ->
+                showEditIngredientDialog(ingredient)
+            },
+            onDeleteClick = { ingredient ->
+                MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("재료 삭제")
+                    .setMessage("'${ingredient.name}'을(를) 정말 삭제하시겠습니까?")
+                    .setNegativeButton("취소", null)
+                    .setPositiveButton("삭제") { _, _ ->
+                        viewModel.deleteIngredient(ingredient)
+                    }
+                    .show()
+            }
+        )
+
         binding.rvIngredients.apply {
             layoutManager = LinearLayoutManager(context)
             adapter = ingredientAdapter
         }
-        viewModel.ingredients.observe(viewLifecycleOwner) { ingredients ->
-            ingredientAdapter.submitList(ingredients)
+        // ▼▼▼ [수정] viewModel.ingredients 대신 viewModel.ingredientUIState 관찰 ▼▼▼
+        viewModel.ingredientUIState.observe(viewLifecycleOwner) { state ->
+            // 어댑터에 표시할 목록 제출
+            ingredientAdapter.submitList(state.displayList)
+
+            // 버튼 표시 여부 설정
+            binding.btnExpandIngredients.isVisible = !state.isExpanded && state.shouldShowButton
+            binding.btnCollapseIngredients.isVisible = state.isExpanded && state.shouldShowButton
+
+            // 재료가 없을 때 텍스트 표시
+            val isFullListEmpty = viewModel.ingredients.value.isNullOrEmpty()
+            binding.tvNoIngredients.isVisible = isFullListEmpty
+            binding.rvIngredients.isVisible = !isFullListEmpty
         }
-        // --- 여기까지 ---
+        // ▲▲▲ [수정] 여기까지 ▲▲▲
     }
 
-    /**
-     * 냉동실, 냉장실 등 각 구역을 클릭했을 때의 동작을 정의합니다.
-     * 이제 재료 추가 다이얼로그를 호출합니다.
-     */
+    private fun setupSortSpinner() {
+        val sortOptions = listOf("유통기한", "이름", "수량", "카테고리")
+        // 'requireContext()'를 사용합니다.
+        val adapter =
+            ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, sortOptions)
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+
+        // 위 2단계에서 추가한 ID를 사용합니다.
+        binding.spinnerSortOptionsFridge.adapter = adapter
+
+        binding.spinnerSortOptionsFridge.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    val selectedOption = when (position) {
+                        0 -> SortOption.EXPIRATION_DATE
+                        1 -> SortOption.NAME
+                        2 -> SortOption.QUANTITY
+                        3 -> SortOption.CATEGORY
+                        else -> SortOption.EXPIRATION_DATE
+                    }
+                    // viewModel의 새 함수 호출
+                    viewModel.setSortOption(selectedOption)
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>) {}
+            }
+    }
+
+    // ▼▼▼ [추가] 더보기/접기 버튼 클릭 리스너 설정 함수 ▼▼▼
+    private fun setupClickListeners() {
+        binding.btnExpandIngredients.setOnClickListener { viewModel.toggleIngredientsExpansion() }
+        binding.btnCollapseIngredients.setOnClickListener { viewModel.toggleIngredientsExpansion() }
+    }
+    // ▲▲▲ [추가] 여기까지 ▲▲▲
+
     private fun setupSectionClickListeners() {
         // 각 구역 클릭 시, 위치 정보로 필터링하여 목록 화면으로 이동
         binding.sectionFreezer.setOnClickListener { navigateToIngredientList("location", "냉동실") }
@@ -73,43 +147,6 @@ class FridgeFragment : Fragment() {
         binding.sectionDoor.setOnClickListener { navigateToIngredientList("location", "문짝") }
     }
 
-    /**
-     * 재료 추가 다이얼로그를 보여주는 함수입니다.
-     * @param preselectedCategory 다이얼로그가 열릴 때 미리 선택될 카테고리 이름
-     */
-//    private fun showAddIngredientDialog(preselectedCategory: String) {
-//        // 1. 다이얼로그에 표시될 커스텀 레이아웃을 inflate 합니다.
-//        val dialogView = LayoutInflater.from(context).inflate(R.layout.dialog_add_ingredient, null)
-//        val nameEditText = dialogView.findViewById<TextInputEditText>(R.id.et_ingredient_name)
-//        val categorySpinner = dialogView.findViewById<Spinner>(R.id.spinner_category)
-//
-//        // 2. ViewModel에서 전체 카테고리 목록을 가져와 Spinner에 설정합니다.
-//        val categoryNames = viewModel.categories.value?.map { it.name } ?: emptyList()
-//        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, categoryNames)
-//        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-//        categorySpinner.adapter = adapter
-//
-//        // 3. 미리 선택해야 할 카테고리의 위치(index)를 찾아 Spinner의 기본 선택값으로 설정합니다.
-//        val categoryIndex = categoryNames.indexOf(preselectedCategory)
-//        if (categoryIndex != -1) {
-//            categorySpinner.setSelection(categoryIndex)
-//        }
-//
-//        // 4. MaterialAlertDialog를 생성하여 보여줍니다.
-//        MaterialAlertDialogBuilder(requireContext())
-//            .setTitle("내 재료 추가")
-//            .setView(dialogView)
-//            .setNegativeButton("취소", null)
-//            .setPositiveButton("추가") { _, _ ->
-//                val name = nameEditText.text.toString().trim()
-//                val selectedCategory = categorySpinner.selectedItem.toString()
-//
-//                if (name.isNotEmpty()) {
-//                    viewModel.addIngredient(name, selectedCategory)
-//                }
-//            }
-//            .show()
-//    }
     // IngredientListActivity를 여는 함수
     private fun navigateToIngredientList(filterType: String, filterValue: String) {
         val intent = Intent(requireActivity(), IngredientListActivity::class.java).apply {
@@ -117,6 +154,112 @@ class FridgeFragment : Fragment() {
             putExtra("FILTER_VALUE", filterValue)
         }
         startActivity(intent)
+    }
+    // ▼▼▼ [추가] 재료 수정 다이얼로그를 보여주는 함수 ▼▼▼
+    private fun showEditIngredientDialog(ingredientToEdit: Ingredient) {
+        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_add_ingredient_detail, null)
+
+        val nameEditText = dialogView.findViewById<AutoCompleteTextView>(R.id.et_ingredient_name)
+        val categorySpinner = dialogView.findViewById<AutoCompleteTextView>(R.id.spinner_category)
+        val locationSpinner = dialogView.findViewById<AutoCompleteTextView>(R.id.spinner_location)
+        val expirationDateEditText = dialogView.findViewById<TextInputEditText>(R.id.et_expiration_date)
+        val toggleInputType = dialogView.findViewById<MaterialButtonToggleGroup>(R.id.toggle_input_type)
+        val quantityLayout = dialogView.findViewById<LinearLayout>(R.id.ll_quantity_input)
+        val amountLayout = dialogView.findViewById<TextInputLayout>(R.id.til_amount)
+        val quantityEditText = dialogView.findViewById<TextInputEditText>(R.id.et_quantity)
+        val amountEditText = dialogView.findViewById<TextInputEditText>(R.id.et_amount)
+
+        nameEditText.setText(ingredientToEdit.name)
+        nameEditText.isEnabled = false // 재료 이름은 수정 불가
+
+        val categoryNames = viewModel.categories.value?.map { it.name } ?: emptyList()
+        val categoryAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, categoryNames)
+        categorySpinner.setAdapter(categoryAdapter)
+        categorySpinner.setText(ingredientToEdit.category, false)
+
+        val locationNames = listOf("냉동실", "냉장실", "야채실", "문짝")
+        val locationAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_dropdown_item, locationNames)
+        locationSpinner.setAdapter(locationAdapter)
+        locationSpinner.setText(ingredientToEdit.location, false)
+
+        if (ingredientToEdit.amount > 0) {
+            toggleInputType.check(R.id.btn_select_amount)
+            quantityLayout.visibility = View.GONE
+            amountLayout.visibility = View.VISIBLE
+            amountEditText.setText(ingredientToEdit.amount.toString())
+            quantityEditText.setText("0")
+        } else {
+            toggleInputType.check(R.id.btn_select_quantity)
+            quantityLayout.visibility = View.VISIBLE
+            amountLayout.visibility = View.GONE
+            quantityEditText.setText(ingredientToEdit.quantity.toString())
+            amountEditText.setText("0")
+        }
+
+        ingredientToEdit.expirationDate?.let {
+            selectedExpirationDate = it
+            expirationDateEditText.setText(SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(it))
+        }
+        expirationDateEditText.setOnClickListener { showDatePickerDialog(expirationDateEditText) }
+
+        toggleInputType.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (isChecked) {
+                when (checkedId) {
+                    R.id.btn_select_quantity -> {
+                        quantityLayout.visibility = View.VISIBLE
+                        amountLayout.visibility = View.GONE
+                        amountEditText.setText("0")
+                    }
+                    R.id.btn_select_amount -> {
+                        quantityLayout.visibility = View.GONE
+                        amountLayout.visibility = View.VISIBLE
+                        quantityEditText.setText("0")
+                    }
+                }
+            }
+        }
+
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("재료 정보 수정")
+            .setView(dialogView)
+            .setPositiveButton("저장") { _, _ ->
+                val quantity = quantityEditText.text.toString().toIntOrNull() ?: 0
+                val amount = amountEditText.text.toString().toDoubleOrNull() ?: 0.0
+
+                val updatedIngredient = ingredientToEdit.copy(
+                    category = categorySpinner.text.toString(),
+                    location = locationSpinner.text.toString(),
+                    quantity = quantity,
+                    amount = amount.toInt(),
+                    unit = if (amount > 0) "g" else "개",
+                    expirationDate = selectedExpirationDate
+                )
+                viewModel.updateIngredient(updatedIngredient)
+                selectedExpirationDate = null
+            }
+            .setNegativeButton("취소", null)
+            .show()
+    }
+
+    // ▼▼▼ [추가] 날짜 선택 다이얼로그를 보여주는 함수 ▼▼▼
+    private fun showDatePickerDialog(dateEditText: TextInputEditText) {
+        val calendar = Calendar.getInstance()
+        selectedExpirationDate?.let { date -> calendar.time = date }
+
+        val year = calendar.get(Calendar.YEAR)
+        val month = calendar.get(Calendar.MONTH)
+        val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+        DatePickerDialog(
+            requireContext(),
+            { _, selectedYear, selectedMonth, selectedDayOfMonth ->
+                calendar.set(selectedYear, selectedMonth, selectedDayOfMonth, 0, 0, 0)
+                selectedExpirationDate = calendar.time
+                val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                dateEditText.setText(dateFormat.format(selectedExpirationDate!!))
+            },
+            year, month, day
+        ).show()
     }
 
     override fun onDestroyView() {

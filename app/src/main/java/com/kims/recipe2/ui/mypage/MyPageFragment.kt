@@ -8,26 +8,29 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
-import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.github.mikephil.charting.charts.BarChart
 import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.LimitLine
 import com.github.mikephil.charting.components.XAxis
-import com.github.mikephil.charting.data.*
-import com.github.mikephil.charting.formatter.ValueFormatter
-import com.google.android.material.tabs.TabLayout
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 import com.google.firebase.auth.FirebaseAuth
+import com.google.android.material.tabs.TabLayout
 import com.kims.recipe2.R
-import com.kims.recipe2.model.DailyNutrition
+import com.kims.recipe2.model.TimePeriod
 import com.kims.recipe2.databinding.FragmentMypageBinding
 import com.kims.recipe2.databinding.ItemMypageStatBinding
 import com.kims.recipe2.ui.auth.LoginActivity
 import com.kims.recipe2.ui.home.NutritionAdapter
-import java.text.SimpleDateFormat
-import java.util.*
+import com.kims.recipe2.ui.mypage.UserRecipeAdapter
+import kotlin.math.max
 
 class MyPageFragment : Fragment() {
 
@@ -35,10 +38,8 @@ class MyPageFragment : Fragment() {
     private val binding get() = _binding!!
     private val viewModel: MyPageViewModel by viewModels()
     private lateinit var lineChart: LineChart
-    private lateinit var barChart: BarChart
 
     private var selectedPeriod = TimePeriod.DAILY
-    private var selectedChartType = ChartType.TREND
     private var selectedNutrient = "칼로리"
     private val nutrients = listOf("칼로리", "탄수화물", "단백질", "지방")
 
@@ -50,7 +51,6 @@ class MyPageFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         lineChart = binding.lineChart
-        barChart = binding.barChart
 
         setupUIControls()
         setupRecyclerViews()
@@ -59,10 +59,8 @@ class MyPageFragment : Fragment() {
     }
 
     private fun setupUIControls() {
-        // 탭 리스너
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
-                binding.tvChartTitle.text = "📊 ${tab?.text} 영양소 분석"
                 selectedPeriod = when (tab?.position) {
                     1 -> TimePeriod.WEEKLY
                     2 -> TimePeriod.MONTHLY
@@ -74,141 +72,139 @@ class MyPageFragment : Fragment() {
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        // 차트 종류 칩 리스너 (오류 수정된 부분)
-        binding.chipGroupChartType.setOnCheckedStateChangeListener { _, checkedIds ->
-            // checkedIds는 List<Int>이므로, 첫 번째 항목을 가져옵니다.
-            val singleCheckedId = checkedIds.firstOrNull()
-
-            selectedChartType = if (singleCheckedId == R.id.chip_trend) ChartType.TREND else ChartType.CUMULATIVE
-            updateChartVisibility()
-            requestDataUpdate()
-        }
-
-        // 영양소 스피너 설정 및 리스너
         val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, nutrients)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         binding.spinnerNutrientSelect.adapter = adapter
         binding.spinnerNutrientSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p0: AdapterView<*>?, p1: View?, position: Int, p3: Long) {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 selectedNutrient = nutrients[position]
                 requestDataUpdate()
             }
-            override fun onNothingSelected(p0: AdapterView<*>?) {}
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
     }
 
     private fun requestDataUpdate() {
-        viewModel.loadNutritionDataFor(selectedPeriod, selectedChartType, selectedNutrient)
-    }
-
-    private fun updateChartVisibility() {
-        binding.lineChart.isVisible = selectedChartType == ChartType.TREND
-        binding.barChart.isVisible = selectedChartType == ChartType.CUMULATIVE
+        viewModel.loadNutritionDataFor(selectedPeriod, selectedNutrient)
     }
 
     private fun observeViewModel() {
-        viewModel.chartDataList.observe(viewLifecycleOwner) { data ->
+        viewModel.chartData.observe(viewLifecycleOwner) { data ->
             val hasData = data.isNotEmpty()
             binding.tvNoData.isVisible = !hasData
-            if (selectedChartType == ChartType.TREND && hasData) {
+            lineChart.isVisible = hasData
+
+            if (hasData) {
                 updateLineChartData(data)
-            } else if (selectedChartType == ChartType.TREND) {
+            } else {
                 lineChart.clear()
-                lineChart.invalidate()
-            }
-        }
-        viewModel.cumulativeChartData.observe(viewLifecycleOwner) { data ->
-            val hasData = data.isNotEmpty()
-            binding.tvNoData.isVisible = !hasData
-            if (selectedChartType == ChartType.CUMULATIVE && hasData) {
-                updateBarChartData(data)
-            } else if (selectedChartType == ChartType.CUMULATIVE){
-                barChart.clear()
-                barChart.invalidate()
             }
         }
 
-        viewModel.stats.observe(viewLifecycleOwner) { stats ->
-            if (stats.size >= 2) {
-                ItemMypageStatBinding.bind(binding.statCard1.root).apply {
-                    tvStatIcon.text = stats[0].icon; tvStatLabel.text = stats[0].label; tvStatValue.text = stats[0].value
-                }
-                ItemMypageStatBinding.bind(binding.statCard2.root).apply {
-                    tvStatIcon.text = stats[1].icon; tvStatLabel.text = stats[1].label; tvStatValue.text = stats[1].value
-                }
+        viewModel.isLoading.observe(viewLifecycleOwner) { isLoading ->
+            binding.chartProgressBar.isVisible = isLoading
+            if (isLoading) {
+                lineChart.visibility = View.INVISIBLE
+                binding.tvNoData.visibility = View.GONE
             }
         }
-        viewModel.weeklyProgress.observe(viewLifecycleOwner) {
-            (binding.rvWeeklyGoals.adapter as? NutritionAdapter)?.submitList(it)
+
+//        viewModel.stats.observe(viewLifecycleOwner) { stats ->
+//            if (stats.size >= 2) {
+//                ItemMypageStatBinding.bind(binding.statCard1.root).apply {
+//                    tvStatIcon.text = stats[0].icon
+//                    tvStatLabel.text = stats[0].label
+//                    tvStatValue.text = stats[0].value
+//                }
+//                ItemMypageStatBinding.bind(binding.statCard2.root).apply {
+//                    tvStatIcon.text = stats[1].icon
+//                    tvStatLabel.text = stats[1].label
+//                    tvStatValue.text = stats[1].value
+//                }
+//            }
+//        }
+
+        viewModel.weeklyProgress.observe(viewLifecycleOwner) { progressList ->
+            (binding.rvWeeklyGoals.adapter as? NutritionAdapter)?.submitList(progressList)
         }
-        viewModel.achievement.observe(viewLifecycleOwner) {
-            binding.tvAchievementTitle.text = it.first
-            binding.tvAchievementDesc.text = it.second
+
+        viewModel.achievement.observe(viewLifecycleOwner) { achievement ->
+            binding.tvAchievementTitle.text = achievement.first
+            binding.tvAchievementDesc.text = achievement.second
+        }
+
+        viewModel.userInfo.observe(viewLifecycleOwner) { userInfo ->
+            binding.tvUserPhysicalInfo.text = "성별: ${userInfo.gender} | 키: ${userInfo.height}cm | 체중: ${userInfo.weight}kg"
+            binding.tvUserGoalInfo.text = "목표 칼로리: ${userInfo.goalCalories.toInt()}kcal"
+            requestDataUpdate()
+        }
+
+        // [추가] 사용자 레시피 목록 관찰
+        viewModel.userRecipes.observe(viewLifecycleOwner) { recipes ->
+            (binding.rvUserRecipes.adapter as? UserRecipeAdapter)?.submitList(recipes)
         }
     }
 
-    private fun updateLineChartData(data: List<DailyNutrition>) {
-        val dateFormat = SimpleDateFormat(if (selectedPeriod == TimePeriod.MONTHLY) "d" else "E", Locale.KOREA)
-        val xLabels = data.map { dateFormat.format(it.date!!) }
-
-        val entries = data.mapIndexed { index, daily ->
-            Entry(index.toFloat(), viewModel.getNutrientValue(daily, selectedNutrient).toFloat())
+    private fun updateLineChartData(data: Map<String, Float>) {
+        val labels = when(selectedPeriod) {
+            TimePeriod.DAILY -> data.keys.sorted()
+            TimePeriod.WEEKLY -> listOf("5주전", "4주전", "3주전", "2주전", "1주전", "이번주")
+            TimePeriod.MONTHLY -> listOf("5달전", "4달전", "3달전", "2달전", "1달전", "이번달")
         }
-        val dataSet = createLineDataSet(entries, selectedNutrient, requireContext().getColor(R.color.protein_color))
+
+        val entries = ArrayList<Entry>()
+        labels.forEachIndexed { index, label ->
+            entries.add(Entry(index.toFloat(), data[label] ?: 0f))
+        }
+
+        val dataSet = createLineDataSet(entries, selectedNutrient, ContextCompat.getColor(requireContext(), R.color.protein_color))
         lineChart.data = LineData(dataSet)
-        configureChartAppearance(lineChart, xLabels)
+
+        val goal = viewModel.userInfo.value?.let {
+            when (selectedNutrient) {
+                "칼로리" -> it.goalCalories.toFloat()
+                "탄수화물" -> it.goalCarbs.toFloat()
+                "단백질" -> it.goalProtein.toFloat()
+                "지방" -> it.goalFat.toFloat()
+                else -> null
+            }
+        }
+
+        val maxDataValue = data.values.maxOrNull() ?: 0f
+        val yAxisMax = max(maxDataValue, goal ?: 0f) * 1.2f
+
+        if (goal != null) {
+            val limitLine = LimitLine(goal, "목표").apply {
+                lineWidth = 2f
+                lineColor = Color.RED
+                enableDashedLine(10f, 10f, 0f)
+                labelPosition = LimitLine.LimitLabelPosition.RIGHT_TOP
+                textSize = 10f
+                textColor = Color.BLACK
+            }
+            lineChart.axisLeft.removeAllLimitLines()
+            lineChart.axisLeft.addLimitLine(limitLine)
+        }
+
+        configureChartAppearance(lineChart, labels, yAxisMax)
         lineChart.invalidate()
     }
 
-    private fun updateBarChartData(data: Map<String, Double>) {
-        val entries = ArrayList<BarEntry>()
-        val labels = ArrayList(data.keys)
-        labels.forEachIndexed { index, key ->
-            entries.add(BarEntry(index.toFloat(), data[key]!!.toFloat()))
-        }
-
-        val dataSet = BarDataSet(entries, selectedNutrient)
-        dataSet.color = requireContext().getColor(R.color.protein_color)
-        barChart.data = BarData(dataSet)
-        configureChartAppearance(barChart, labels)
-        barChart.invalidate()
-    }
-
-    // configureChartAppearance 함수 (오류 수정된 부분)
-    private fun configureChartAppearance(chart: com.github.mikephil.charting.charts.Chart<*>, xLabels: List<String>) {
+    private fun configureChartAppearance(chart: LineChart, xLabels: List<String>, yAxisMax: Float) {
         chart.description.isEnabled = false
         chart.legend.isEnabled = true
-        chart.animateY(1000)
 
-        // chart의 타입에 따라 구체적인 클래스로 형변환하여 속성에 접근합니다.
-        when (chart) {
-            is LineChart -> {
-                chart.axisRight.isEnabled = false
-                chart.xAxis.apply {
-                    position = XAxis.XAxisPosition.BOTTOM
-                    valueFormatter = object : ValueFormatter() {
-                        override fun getFormattedValue(value: Float): String {
-                            return xLabels.getOrNull(value.toInt()) ?: ""
-                        }
-                    }
-                    labelCount = xLabels.size.coerceAtMost(7)
-                    granularity = 1f
-                }
-            }
-            is BarChart -> {
-                chart.axisRight.isEnabled = false
-                chart.xAxis.apply {
-                    position = XAxis.XAxisPosition.BOTTOM
-                    valueFormatter = object : ValueFormatter() {
-                        override fun getFormattedValue(value: Float): String {
-                            return xLabels.getOrNull(value.toInt()) ?: ""
-                        }
-                    }
-                    labelCount = xLabels.size
-                    granularity = 1f
-                }
-            }
+        chart.axisLeft.axisMinimum = 0f
+        chart.axisLeft.axisMaximum = yAxisMax
+
+        chart.xAxis.apply {
+            position = XAxis.XAxisPosition.BOTTOM
+            valueFormatter = IndexAxisValueFormatter(xLabels)
+            labelCount = xLabels.size
+            granularity = 1f
         }
+        chart.axisRight.isEnabled = false
+        chart.animateY(1000)
     }
 
     private fun createLineDataSet(entries: List<Entry>, label: String, color: Int) = LineDataSet(entries, label).apply {
@@ -218,6 +214,13 @@ class MyPageFragment : Fragment() {
     private fun setupRecyclerViews() {
         binding.rvWeeklyGoals.layoutManager = LinearLayoutManager(context)
         binding.rvWeeklyGoals.adapter = NutritionAdapter()
+
+        // [추가] 사용자 레시피 RecyclerView 설정
+        binding.rvUserRecipes.layoutManager = LinearLayoutManager(context)
+        binding.rvUserRecipes.adapter = UserRecipeAdapter { recipe ->
+            val ingredientsText = recipe.ingredients.joinToString(", ") { it["name"].toString() }
+            Toast.makeText(context, "재료: $ingredientsText", Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun setupLogoutButton() {

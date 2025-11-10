@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+
+    <!-- 검은색 반투명 -->
+    <solid android:color="#66000000" />
+    <!-- 위 색상 의미: #AARRGGBB
+         AA = alpha (투명도, 00~FF)
+         RR = red, GG = green, BB = blue
+         66 = 약간 어둡게, 40~80 정도도 적당 -->
+</shape>
