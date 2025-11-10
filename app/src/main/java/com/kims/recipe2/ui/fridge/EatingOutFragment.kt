@@ -130,11 +130,16 @@ class EatingOutFragment : Fragment() {
             return
         }
 
+        // 로딩 표시
+        if (selectedImageUri != null) {
+            Toast.makeText(requireContext(), "이미지를 업로드 중...", Toast.LENGTH_SHORT).show()
+        }
+
         // MealViewModel에 isHomemade=false, imageUri 전달
         mealViewModel.saveEatingOutRecord(
             mealName = mealName,
             mealType = selectedMealTime,
-            imageUri = selectedImageUri?.toString(),
+            imageUri = selectedImageUri,
             isHomemade = false, // 외식이므로 false 설정
             onSuccess = {
                 Toast.makeText(requireContext(), "✅ 외식 기록 완료!", Toast.LENGTH_SHORT).show()

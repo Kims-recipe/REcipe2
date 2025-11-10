@@ -1,5 +1,6 @@
 package com.kims.recipe2.ui.fridge
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -9,6 +10,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.QuerySnapshot
+import com.google.firebase.storage.FirebaseStorage
 import com.kims.recipe2.model.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -16,6 +18,7 @@ import java.util.*
 class MealViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
+    private val storage = FirebaseStorage.getInstance()
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
     // 👇 [추가] 사용자의 레시피 목록을 담을 LiveData
@@ -63,7 +66,7 @@ class MealViewModel : ViewModel() {
         mealName: String,
         mealType: String,
         selectedIngredients: List<Ingredient>,
-        imageUri: String?,
+        imageUri: Uri?,
         isHomemade: Boolean,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
@@ -95,6 +98,69 @@ class MealViewModel : ViewModel() {
                 "quantity" to it.quantity, "unit" to it.unit, "amount" to it.amount
             )
         }
+
+        // 이미지가 있으면 먼저 업로드
+        if (imageUri != null) {
+            uploadImageAndSaveMeal(
+                mealName, mealType, totalNutrition, ingredientsForMealRecord,
+                imageUri, isHomemade, onSuccess, onFailure
+            )
+        } else {
+            // 이미지가 없으면 바로 저장
+            saveMealToFirestore(
+                mealName, mealType, totalNutrition, ingredientsForMealRecord,
+                null, isHomemade, onSuccess, onFailure
+            )
+        }
+    }
+
+    private fun uploadImageAndSaveMeal(
+        mealName: String,
+        mealType: String,
+        totalNutrition: DailyNutrition,
+        ingredients: List<Map<String, Any>>,
+        imageUri: Uri,
+        isHomemade: Boolean,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val fileName = "meal_images/${userId}/${UUID.randomUUID()}_${System.currentTimeMillis()}.jpg"
+        val storageRef = storage.reference.child(fileName)
+
+        storageRef.putFile(imageUri)
+            .continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                storageRef.downloadUrl
+            }
+            .addOnSuccessListener { downloadUri ->
+                saveMealToFirestore(
+                    mealName, mealType, totalNutrition, ingredients,
+                    downloadUri.toString(), isHomemade, onSuccess, onFailure
+                )
+            }
+            .addOnFailureListener { e ->
+                Log.e("MealViewModel", "❌ 이미지 업로드 실패!", e)
+                onFailure(e)
+            }
+    }
+
+    private fun saveMealToFirestore(
+        mealName: String,
+        mealType: String,
+        totalNutrition: DailyNutrition,
+        ingredients: List<Map<String, Any>>,
+        imageUrl: String?,
+        isHomemade: Boolean,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        if (userId == null) {
+            onFailure(IllegalStateException("User ID is null."))
+            return
+        }
+
         val recordMap = hashMapOf(
             "id" to UUID.randomUUID().toString(),
             "name" to mealName,
@@ -110,11 +176,10 @@ class MealViewModel : ViewModel() {
             "vitaminC" to totalNutrition.vitaminC,
             "date" to FieldValue.serverTimestamp(),
             "isPlanned" to false,
-            "ingredients" to ingredientsForMealRecord,
-            "imageUri" to imageUri.orEmpty(),
+            "ingredients" to ingredients,
+            "imageUri" to (imageUrl ?: ""),
             "isHomemade" to isHomemade
         )
-
 
         val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
         val dailyNutritionRef = db.collection("users").document(userId)
@@ -154,7 +219,7 @@ class MealViewModel : ViewModel() {
     fun saveEatingOutRecord(
         mealName: String,
         mealType: String,
-        imageUri: String?,
+        imageUri: Uri?,
         isHomemade: Boolean,
         onSuccess: () -> Unit,
         onFailure: (Exception) -> Unit
@@ -176,76 +241,126 @@ class MealViewModel : ViewModel() {
                     null
                 }
 
-                val recordMap = hashMapOf(
-                    "id" to UUID.randomUUID().toString(),
-                    "name" to mealName,
-                    "type" to mealType,
-                    "calories" to (food?.calories ?: 0.0),
-                    "carbs" to (food?.carbs ?: 0.0),
-                    "protein" to (food?.protein ?: 0.0),
-                    "fat" to (food?.fat ?: 0.0),
-                    "calcium" to (food?.calcium ?: 0.0),
-                    "iron" to (food?.iron ?: 0.0),
-                    "sodium" to (food?.sodium ?: 0.0),
-                    "vitaminA" to (food?.vitaminA ?: 0.0),
-                    "vitaminC" to (food?.vitaminC ?: 0.0),
-                    "protein" to (food?.protein ?: 0.0),
-                    "date" to FieldValue.serverTimestamp(),
-                    "isPlanned" to false,
-                    "imageUri" to imageUri.orEmpty(),
-                    "isHomemade" to isHomemade
-                )
-
-                val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
-                val dailyNutritionRef = db.collection("users").document(userId)
-                    .collection("dailyNutrition").document(todayDateString)
-                val newMealRecordRef = db.collection("users").document(userId)
-                    .collection("mealRecords").document()
-
-                db.runTransaction { transaction ->
-                    val snapshot = transaction.get(dailyNutritionRef)
-                    if (snapshot.exists()) {
-                        val updates = hashMapOf<String, Any>(
-                            "calories" to FieldValue.increment(food?.calories ?: 0.0),
-                            "carbs" to FieldValue.increment(food?.carbs ?: 0.0),
-                            "protein" to FieldValue.increment(food?.protein ?: 0.0),
-                            "fat" to FieldValue.increment(food?.fat ?: 0.0),
-                            "sodium" to FieldValue.increment(food?.sodium ?: 0.0),
-                            "calcium" to FieldValue.increment(food?.calcium ?: 0.0),
-                            "iron" to FieldValue.increment(food?.iron ?: 0.0),
-                            "vitaminA" to FieldValue.increment(food?.vitaminA ?: 0.0),
-                            "vitaminC" to FieldValue.increment(food?.vitaminC ?: 0.0)
-                        )
-                        transaction.update(dailyNutritionRef, updates)
-                    } else {
-                        val newDailyData = DailyNutrition(
-                            date = Date(),
-                            calories = food?.calories ?: 0.0,
-                            carbs = food?.carbs ?: 0.0,
-                            protein = food?.protein ?: 0.0,
-                            fat = food?.fat ?: 0.0,
-                            sodium = food?.sodium ?: 0.0,
-                            calcium = food?.calcium ?: 0.0,
-                            iron = food?.iron ?: 0.0,
-                            vitaminA = food?.vitaminA ?: 0.0,
-                            vitaminC = food?.vitaminC ?: 0.0
-                        )
-                        transaction.set(dailyNutritionRef, newDailyData)
-                    }
-                    transaction.set(newMealRecordRef, recordMap)
-                    null
-                }.addOnSuccessListener {
-                    Log.d("MealViewModel", "✅ 외식 기록 및 일일 영양정보 업데이트 성공!")
-                    onSuccess()
-                }.addOnFailureListener { e ->
-                    Log.e("MealViewModel", "❌ 외식 기록 트랜잭션 실패!", e)
-                    onFailure(e)
+                // 이미지가 있으면 먼저 업로드
+                if (imageUri != null) {
+                    uploadImageAndSaveEatingOut(food, mealName, mealType, isHomemade, imageUri, onSuccess, onFailure)
+                } else {
+                    saveEatingOutToFirestore(food, mealName, mealType, isHomemade, null, onSuccess, onFailure)
                 }
             }
             .addOnFailureListener { e ->
                 Log.e("MealViewModel", "❌ 'foods' 컬렉션 검색 실패!", e)
                 onFailure(e)
             }
+    }
+
+    private fun uploadImageAndSaveEatingOut(
+        food: Food?,
+        mealName: String,
+        mealType: String,
+        isHomemade: Boolean,
+        imageUri: Uri,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val fileName = "meal_images/${userId}/${UUID.randomUUID()}_${System.currentTimeMillis()}.jpg"
+        val storageRef = storage.reference.child(fileName)
+
+        storageRef.putFile(imageUri)
+            .continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                storageRef.downloadUrl
+            }
+            .addOnSuccessListener { downloadUri ->
+                saveEatingOutToFirestore(food, mealName, mealType, isHomemade, downloadUri.toString(), onSuccess, onFailure)
+            }
+            .addOnFailureListener { e ->
+                Log.e("MealViewModel", "❌ 이미지 업로드 실패!", e)
+                onFailure(e)
+            }
+    }
+
+    private fun saveEatingOutToFirestore(
+        food: Food?,
+        mealName: String,
+        mealType: String,
+        isHomemade: Boolean,
+        imageUrl: String?,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
+        if (userId == null) {
+            onFailure(IllegalStateException("User ID is null."))
+            return
+        }
+
+        val recordMap = hashMapOf(
+            "id" to UUID.randomUUID().toString(),
+            "name" to mealName,
+            "type" to mealType,
+            "calories" to (food?.calories ?: 0.0),
+            "carbs" to (food?.carbs ?: 0.0),
+            "protein" to (food?.protein ?: 0.0),
+            "fat" to (food?.fat ?: 0.0),
+            "calcium" to (food?.calcium ?: 0.0),
+            "iron" to (food?.iron ?: 0.0),
+            "sodium" to (food?.sodium ?: 0.0),
+            "vitaminA" to (food?.vitaminA ?: 0.0),
+            "vitaminC" to (food?.vitaminC ?: 0.0),
+            "date" to FieldValue.serverTimestamp(),
+            "isPlanned" to false,
+            "imageUri" to (imageUrl ?: ""),
+            "isHomemade" to isHomemade
+        )
+
+        val todayDateString = SimpleDateFormat("yyyy-MM-dd", Locale.KOREA).format(Date())
+        val dailyNutritionRef = db.collection("users").document(userId)
+            .collection("dailyNutrition").document(todayDateString)
+        val newMealRecordRef = db.collection("users").document(userId)
+            .collection("mealRecords").document()
+
+        db.runTransaction { transaction ->
+            val snapshot = transaction.get(dailyNutritionRef)
+            if (snapshot.exists()) {
+                val updates = hashMapOf<String, Any>(
+                    "calories" to FieldValue.increment(food?.calories ?: 0.0),
+                    "carbs" to FieldValue.increment(food?.carbs ?: 0.0),
+                    "protein" to FieldValue.increment(food?.protein ?: 0.0),
+                    "fat" to FieldValue.increment(food?.fat ?: 0.0),
+                    "sodium" to FieldValue.increment(food?.sodium ?: 0.0),
+                    "calcium" to FieldValue.increment(food?.calcium ?: 0.0),
+                    "iron" to FieldValue.increment(food?.iron ?: 0.0),
+                    "vitaminA" to FieldValue.increment(food?.vitaminA ?: 0.0),
+                    "vitaminC" to FieldValue.increment(food?.vitaminC ?: 0.0)
+                )
+                transaction.update(dailyNutritionRef, updates)
+            } else {
+                val newDailyData = DailyNutrition(
+                    date = Date(),
+                    calories = food?.calories ?: 0.0,
+                    carbs = food?.carbs ?: 0.0,
+                    protein = food?.protein ?: 0.0,
+                    fat = food?.fat ?: 0.0,
+                    sodium = food?.sodium ?: 0.0,
+                    calcium = food?.calcium ?: 0.0,
+                    iron = food?.iron ?: 0.0,
+                    vitaminA = food?.vitaminA ?: 0.0,
+                    vitaminC = food?.vitaminC ?: 0.0
+                )
+                transaction.set(dailyNutritionRef, newDailyData)
+            }
+            transaction.set(newMealRecordRef, recordMap)
+            null
+        }.addOnSuccessListener {
+            Log.d("MealViewModel", "✅ 외식 기록 및 일일 영양정보 업데이트 성공!")
+            onSuccess()
+        }.addOnFailureListener { e ->
+            Log.e("MealViewModel", "❌ 외식 기록 트랜잭션 실패!", e)
+            onFailure(e)
+        }
     }
 
     fun deleteMealRecord(
@@ -313,5 +428,54 @@ class MealViewModel : ViewModel() {
             Log.e("MealViewModel", "❌ 식단 기록 삭제 실패!", e)
             onFailure(e)
         }
+    }
+
+    fun updateMealImage(
+        mealRecordId: String,
+        imageUri: Uri,
+        onSuccess: () -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        if (userId == null) {
+            onFailure(IllegalStateException("User ID is null."))
+            return
+        }
+
+        if (mealRecordId.isBlank()) {
+            onFailure(IllegalStateException("MealRecord ID is empty."))
+            return
+        }
+
+        // Firebase Storage에 이미지 업로드
+        val fileName = "meal_images/${userId}/${mealRecordId}_${System.currentTimeMillis()}.jpg"
+        val storageRef = storage.reference.child(fileName)
+
+        storageRef.putFile(imageUri)
+            .continueWithTask { task ->
+                if (!task.isSuccessful) {
+                    task.exception?.let { throw it }
+                }
+                // 업로드 성공 후 다운로드 URL 가져오기
+                storageRef.downloadUrl
+            }
+            .addOnSuccessListener { downloadUri ->
+                // Firestore에 다운로드 URL 저장
+                val mealRecordRef = db.collection("users").document(userId)
+                    .collection("mealRecords").document(mealRecordId)
+
+                mealRecordRef.update("imageUri", downloadUri.toString())
+                    .addOnSuccessListener {
+                        Log.d("MealViewModel", "✅ 식단 이미지 업데이트 성공!")
+                        onSuccess()
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("MealViewModel", "❌ Firestore 업데이트 실패!", e)
+                        onFailure(e)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("MealViewModel", "❌ 이미지 업로드 실패!", e)
+                onFailure(e)
+            }
     }
 }
