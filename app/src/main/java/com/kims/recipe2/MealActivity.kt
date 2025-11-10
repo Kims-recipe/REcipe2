@@ -5,6 +5,8 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.kims.recipe2.databinding.ActivityMealBinding
 import com.kims.recipe2.ui.fridge.EatingOutFragment
+import com.kims.recipe2.ui.fridge.FoodShotFragment
+import androidx.fragment.app.commit // commitKtx 사용을 위한 import
 
 class MealActivity : AppCompatActivity() {
 
@@ -15,26 +17,44 @@ class MealActivity : AppCompatActivity() {
         binding = ActivityMealBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // MainActivity로부터 전달받은 식사 유형 가져오기
         val mealType = intent.getStringExtra("MEAL_TYPE")
 
-        // 식사 유형에 따라 적절한 프래그먼트 로드
-        if (savedInstanceState == null) { // 액티비티가 처음 생성될 때만 프래그먼트 추가
+        if (savedInstanceState == null) {
             val fragment = when (mealType) {
                 "외식" -> EatingOutFragment()
-                "집밥" -> HomemadeMealFragment() // "집밥"일 경우 com.kims.recipe2.ui.fridge.HomemadeMealFragment 생성
-                "푸드샷" -> EatingOutFragment() // "나중에 추가"
-                else -> {
-                    // 기본값 또는 오류 처리 (예: 아무 프래그먼트도 로드하지 않거나 기본 프래그먼트 로드)
-                    // 여기서는 EatingOutFragment를 기본으로 로드하도록 설정했습니다.
-                    EatingOutFragment()
+                "집밥" -> HomemadeMealFragment()
+                "푸드샷" -> FoodShotFragment() // FoodShotDummyFragment 로드
+                else -> EatingOutFragment()
+            }
+
+            supportFragmentManager.commit {
+                replace(R.id.meal_fragment_container, fragment)
+            }
+        }
+
+        // 💡 [추가] FoodShotDummyFragment의 결과(식사 이름, 사진 URI)를 받아서 EatingOutFragment를 실행
+        supportFragmentManager.setFragmentResultListener(
+            "foodShotResult", // FoodShotDummyFragment에서 설정할 키
+            this
+        ) { requestKey, bundle ->
+            val mealName = bundle.getString("mealName")
+            val imageUri = bundle.getString("imageUri")
+            val mealType = bundle.getString("mealType") // (아침, 점심, 저녁)
+
+            // EatingOutFragment를 생성하고 데이터를 Bundle로 전달
+            val eatingOutFragment = EatingOutFragment().apply {
+                arguments = Bundle().apply {
+                    putString("mealName", mealName)
+                    putString("imageUri", imageUri)
+                    putString("mealType", mealType)
+                    putBoolean("fromFoodShot", true) // FoodShot에서 왔음을 알림
                 }
             }
 
-            // 프래그먼트 트랜잭션 시작
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.meal_fragment_container, fragment) // meal_fragment_container는 MealActivity의 레이아웃에 프래그먼트가 들어갈 컨테이너 ID입니다.
-                .commit()
+            // EatingOutFragment로 교체
+            supportFragmentManager.commit {
+                replace(R.id.meal_fragment_container, eatingOutFragment)
+            }
         }
     }
 }

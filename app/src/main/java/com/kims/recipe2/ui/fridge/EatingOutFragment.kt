@@ -50,9 +50,48 @@ class EatingOutFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        setupMealTimeToggleGroup()
+        var isDataFromFoodShot = false
+
+        arguments?.let { bundle ->
+            val preSetMealName = bundle.getString("mealName")
+            val preSetImageUri = bundle.getString("imageUri")
+            val preSetMealType = bundle.getString("mealType") // 이 값은 null이 될 것입니다.
+
+            if (preSetMealName != null || preSetImageUri != null) {
+                isDataFromFoodShot = true
+            }
+
+            // 1. 이름, 이미지 설정 (유지)
+            if (preSetMealName != null) {
+                binding.etMealName.setText(preSetMealName)
+            }
+            if (preSetImageUri != null) {
+                selectedImageUri = Uri.parse(preSetImageUri)
+                binding.ivMealPreview.setImageURI(selectedImageUri)
+                binding.llPlaceholderGroup.visibility = View.GONE
+                binding.ivMealPreview.visibility = View.VISIBLE
+            }
+
+            // 2. 식사 시간 설정 (로직 변경)
+            if (preSetMealType != null) {
+                // FoodShot에서 전달받았으나, 우리는 이 값을 무시하고 사용자 선택을 유도
+                // 이 블록은 FoodShotFragment에서 null을 전달하므로 실행되지 않음
+            }
+        }
+
         setupImagePicker()
+        setupMealTimeToggleGroup()
+
+        // 💡 [핵심 수정] FoodShot에서 왔을 경우, 토글 그룹의 자동 선택을 해제합니다.
+        if (isDataFromFoodShot) {
+            // 토글 그룹의 선택을 강제로 해제하여 사용자에게 선택을 유도
+            binding.toggleMealTime.clearChecked()
+            // 기본값 '아침'으로 자동 선택되는 것을 방지합니다.
+            Toast.makeText(requireContext(), "식사 시간을 선택해주세요.", Toast.LENGTH_LONG).show()
+        }
+
         setupSaveButton()
+        // setupSpinner() // (추가적인 셋업 함수가 있다면 유지)
     }
 
     private fun setupMealTimeToggleGroup() {
